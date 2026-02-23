@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VodiceBook — AI 小说转有声书</title>
+    <meta name="description" content="AI驱动的小说转有声书平台，自动角色识别、朗读稿生成、多角色语音合成">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">🎧</span>
+                <h1>VodiceBook</h1>
+            </div>
+            <p class="tagline">AI 小说转有声书</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- 步骤指示器 -->
+        <div class="steps">
+            <div class="step active" data-step="1">
+                <span class="step-num">1</span>
+                <span class="step-label">上传章节</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="2">
+                <span class="step-num">2</span>
+                <span class="step-label">确认朗读稿</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" data-step="3">
+                <span class="step-num">3</span>
+                <span class="step-label">生成音频</span>
+            </div>
+        </div>
+
+        <!-- 第一步：上传章节 -->
+        <section id="section-upload" class="card">
+            <h2 class="card-title">📝 上传章节文本</h2>
+            <div class="form-group">
+                <label for="chapter-title">章节标题</label>
+                <input type="text" id="chapter-title" placeholder="例如：第一章 初入江湖" maxlength="128">
+            </div>
+            <div class="form-group">
+                <label for="chapter-content">章节正文</label>
+                <textarea id="chapter-content" rows="12" placeholder="在此粘贴小说章节文本..."></textarea>
+                <div class="char-count"><span id="word-count">0</span> 字</div>
+            </div>
+            <button id="btn-upload" class="btn btn-primary" onclick="uploadChapter()">
+                <span class="btn-icon">🚀</span> 上传并分析
+            </button>
+        </section>
+
+        <!-- 状态面板 -->
+        <section id="section-status" class="card" style="display:none;">
+            <h2 class="card-title">⏳ 任务状态</h2>
+            <div class="status-panel">
+                <div class="status-row">
+                    <span class="status-label">状态</span>
+                    <span id="task-status" class="status-badge">等待中</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">进度</span>
+                    <span id="task-progress">0%</span>
+                </div>
+                <div id="error-msg" class="error-msg" style="display:none;"></div>
+            </div>
+        </section>
+
+        <!-- 第二步：朗读稿预览 -->
+        <section id="section-script" class="card" style="display:none;">
+            <h2 class="card-title">📖 朗读稿预览</h2>
+            <div id="characters-list" class="characters-list"></div>
+            <div id="segments-list" class="segments-list"></div>
+            <div class="action-row">
+                <button id="btn-synthesize" class="btn btn-primary" onclick="startSynthesis()">
+                    <span class="btn-icon">🎵</span> 开始语音合成
+                </button>
+            </div>
+        </section>
+
+        <!-- 第三步：音频结果 -->
+        <section id="section-audio" class="card" style="display:none;">
+            <h2 class="card-title">🎧 音频结果</h2>
+            <div class="audio-player-container">
+                <audio id="audio-player" controls class="audio-player"></audio>
+            </div>
+            <div class="action-row">
+                <button id="btn-download" class="btn btn-secondary" onclick="downloadAudio()">
+                    <span class="btn-icon">💾</span> 下载音频
+                </button>
+                <button class="btn btn-outline" onclick="resetAll()">
+                    <span class="btn-icon">🔄</span> 重新开始
+                </button>
+            </div>
+        </section>
+
+        <!-- 任务历史 -->
+        <section id="section-history" class="card">
+            <h2 class="card-title">📋 任务历史</h2>
+            <div id="task-history" class="task-history">
+                <p class="empty-hint">暂无历史任务</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>VodiceBook © 2026 — Powered by SiliconFlow LLM + QwenTTS</p>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

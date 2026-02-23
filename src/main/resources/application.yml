@@ -1,0 +1,37 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/vodicebook
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+app:
+  storage:
+    base-path: ./storage
+
+llm:
+  api-url: https://api.siliconflow.cn/v1/chat/completions
+  api-key: ${LLM_API_KEY}
+  model: ${LLM_MODEL:Qwen/Qwen2.5-7B-Instruct}
+  max-tokens: 4096
+  temperature: 0.3
+  timeout-seconds: 120
+
+tts:
+  api-url: ${TTS_API_URL:https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation}
+  api-key: ${TTS_API_KEY}
+  model: ${TTS_MODEL:qwen3-tts-flash}
+  output-format: wav
+  sample-rate: 24000
+  segment-pause-ms: 500
