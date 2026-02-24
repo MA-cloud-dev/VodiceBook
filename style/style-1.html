@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Style 1 - 极简黑白灰</title>
+    <style>
+        :root {
+            --primary-color: #222222;
+            --primary-text: #ffffff;
+            --primary-shadow: rgba(0, 0, 0, 0.15);
+            --secondary-color: #ffffff;
+            --secondary-text: #222222;
+            --bg-color: #f7f7f7;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --heading-color: #111111;
+            --border-color: #e0e0e0;
+            --hover-bg: #f0f0f0;
+            --input-bg: #ffffff;
+            --focus-ring: rgba(34, 34, 34, 0.1);
+            --radius: 8px;
+            --radius-sm: 4px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 40px;
+        }
+
+        h1,
+        h2 {
+            margin-top: 0;
+            color: var(--heading-color);
+            font-weight: 600;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .color-box {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: flex-end;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            border-radius: var(--radius-sm);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--primary-text);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-shadow);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: var(--secondary-text);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--hover-bg);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 15px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--focus-ring);
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>极简黑白灰 (Minimalist Monochrome)</h1>
+        <p>这是您的<strong>第一种风格</strong>示例。注重简约、清晰的排版与极致留白，绝无蓝紫配色。非常适合需要高度集中注意力的工具类应用页面。</p>
+
+        <h2>色彩面板 (Color Palette)</h2>
+        <div class="color-palette">
+            <div class="color-box" style="background: var(--primary-color);">主黑</div>
+            <div class="color-box" style="background: var(--bg-color); color: #333; border: 1px solid #ddd;">浅灰底</div>
+            <div class="color-box" style="background: var(--card-bg); color: #333; border: 1px solid #ddd;">纯白卡片</div>
+            <div class="color-box" style="background: var(--text-color);">深灰字</div>
+        </div>
+
+        <h2>按钮 & 图标 (Buttons & Icons)</h2>
+        <div class="row">
+            <button class="btn btn-primary">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+                </svg>
+                确认操作
+            </button>
+            <button class="btn btn-secondary">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+                </svg>
+                辅助按钮
+            </button>
+        </div>
+
+        <h2>表单输入 (Form Inputs)</h2>
+        <div class="input-group">
+            <label>示例输入框</label>
+            <input type="text" placeholder="请输入您的内容...">
+        </div>
+    </div>
+</body>
+
+</html>

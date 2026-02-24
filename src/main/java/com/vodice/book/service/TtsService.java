@@ -70,7 +70,7 @@ public class TtsService {
      *
      * @return 最终音频文件路径
      */
-    public String synthesize(Long taskId, ReadingScript script,
+    public String synthesize(Long userId, Long taskId, ReadingScript script,
             ProgressCallback progressCallback) throws IOException {
         List<ScriptSegment> segments = script.getSegments();
         if (segments == null || segments.isEmpty()) {
@@ -84,10 +84,10 @@ public class TtsService {
         }
 
         // 创建临时目录
-        Path segmentsDir = Paths.get(storagePath, "audio", "segments", String.valueOf(taskId));
+        Path segmentsDir = Paths.get(storagePath, String.valueOf(userId), "audio", "segments", String.valueOf(taskId));
         Files.createDirectories(segmentsDir);
 
-        Path outputDir = Paths.get(storagePath, "audio", "output");
+        Path outputDir = Paths.get(storagePath, String.valueOf(userId), "audio", "output");
         Files.createDirectories(outputDir);
 
         List<Path> segmentFiles = new ArrayList<>();

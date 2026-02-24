@@ -1,3 +1,41 @@
+// ===== 认证辅助 =====
+function getToken() {
+    return sessionStorage.getItem('token');
+}
+
+function authHeaders() {
+    const token = getToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    return headers;
+}
+
+function checkAuth() {
+    if (!getToken()) {
+        window.location.href = '/login.html';
+        return false;
+    }
+    const btnNew = document.getElementById('btn-new');
+    if (btnNew) btnNew.style.display = 'inline-block';
+    return true;
+}
+
+function logout() {
+    sessionStorage.clear();
+    window.location.href = '/login.html';
+}
+
+function showUserInfo() {
+    const nickname = sessionStorage.getItem('nickname') || sessionStorage.getItem('username') || '';
+    const userEl = document.getElementById('user-info');
+    if (userEl && nickname) {
+        userEl.textContent = nickname;
+        userEl.style.display = 'inline';
+    }
+    const logoutBtn = document.getElementById('btn-logout');
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+}
+
 // ===== 全局状态 =====
 let currentTaskId = null;
 let currentChapterId = null;
@@ -7,6 +45,35 @@ let currentScript = null;
 let voiceData = { male: [], female: [] }; // 缓存音色列表
 let voiceSampleMap = {}; // 音色名 -> 样本音频路径
 let previewAudio = null; // 全局试听播放器
+
+// ===== 状态保存防抖 =====
+function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+async function saveUserState() {
+    if (!getToken()) return;
+    const state = {
+        taskId: currentTaskId,
+        chapterId: currentChapterId,
+        draftTitle: document.getElementById('chapter-title').value,
+        draftContent: document.getElementById('chapter-content').value
+    };
+    try {
+        await fetch('/api/user/state', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify(state)
+        });
+    } catch (err) {
+        console.error('Failed to save state:', err);
+    }
+}
+const debouncedSaveState = debounce(saveUserState, 500);
 
 // ===== 颜色映射（角色标识用） =====
 const characterColors = [
@@ -40,18 +107,56 @@ const wordCountEl = document.getElementById('word-count');
 
 contentEl.addEventListener('input', () => {
     wordCountEl.textContent = contentEl.value.length;
+    debouncedSaveState();
 });
+
+document.getElementById('chapter-title').addEventListener('input', debouncedSaveState);
 
 // ===== 页面加载 =====
 document.addEventListener('DOMContentLoaded', () => {
+    if (!checkAuth()) return;
+    showUserInfo();
     loadHistory();
-    loadVoices();
+    loadVoices().then(() => {
+        loadUserState();
+    });
 });
+
+async function loadUserState() {
+    try {
+        const res = await fetch('/api/user/state', { headers: authHeaders() });
+        if (res.status === 401) return logout();
+        if (!res.ok) return;
+        const state = await res.json();
+
+        if (state.draftTitle) document.getElementById('chapter-title').value = state.draftTitle;
+        if (state.draftContent) {
+            contentEl.value = state.draftContent;
+            wordCountEl.textContent = state.draftContent.length;
+        }
+
+        if (state.taskId) {
+            loadTaskDetails(state.taskId);
+        }
+    } catch (err) {
+        console.error('Failed to load user state:', err);
+    }
+}
+
+async function createNewDraft() {
+    try {
+        await fetch('/api/user/state', { method: 'DELETE', headers: authHeaders() });
+    } catch (err) {
+        console.error('Failed to clear state:', err);
+    }
+    resetAll();
+}
 
 // ===== 加载音色列表 =====
 async function loadVoices() {
     try {
-        const res = await fetch('/api/voices');
+        const res = await fetch('/api/voices', { headers: authHeaders() });
+        if (res.status === 401) return logout();
         if (res.ok) {
             voiceData = await res.json();
             // 构建音色样本映射表
@@ -81,18 +186,20 @@ async function uploadChapter() {
     try {
         const chapterRes = await fetch('/api/chapters', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders(),
             body: JSON.stringify({ title, content })
         });
+        if (chapterRes.status === 401) return logout();
         if (!chapterRes.ok) throw new Error('章节创建失败');
         const chapter = await chapterRes.json();
         currentChapterId = chapter.id;
 
         const taskRes = await fetch('/api/tasks', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders(),
             body: JSON.stringify({ chapterId: chapter.id })
         });
+        if (taskRes.status === 401) return logout();
         if (!taskRes.ok) throw new Error('任务创建失败');
         const task = await taskRes.json();
         currentTaskId = task.id;
@@ -100,6 +207,7 @@ async function uploadChapter() {
         setStep(2);
         showSection('status');
         startPolling();
+        saveUserState();
     } catch (err) {
         showToast('操作失败: ' + err.message);
     } finally {
@@ -125,7 +233,8 @@ function stopPolling() {
 async function pollStatus() {
     if (!currentTaskId) return;
     try {
-        const res = await fetch(`/api/tasks/${currentTaskId}`);
+        const res = await fetch(`/api/tasks/${currentTaskId}`, { headers: authHeaders() });
+        if (res.status === 401) return logout();
         if (!res.ok) return;
         const task = await res.json();
         updateStatusPanel(task);
@@ -169,7 +278,8 @@ function updateStatusPanel(task) {
 // ===== 朗读稿展示 =====
 async function loadScript() {
     try {
-        const res = await fetch(`/api/tasks/${currentTaskId}/script`);
+        const res = await fetch(`/api/tasks/${currentTaskId}/script`, { headers: authHeaders() });
+        if (res.status === 401) return logout();
         if (!res.ok) throw new Error('获取朗读稿失败');
         const script = await res.json();
 
@@ -201,12 +311,10 @@ function renderCharactersList(script, editable) {
         const genderIcon = char.gender === 'female' ? '♀' : char.gender === 'male' ? '♂' : '?';
 
         if (editable) {
-            // 编辑模式：可编辑的角色卡片
             const card = document.createElement('div');
             card.className = 'character-card editing';
             card.dataset.index = i;
 
-            // 音色下拉选项
             const voiceOpts = buildVoiceOptions(char.gender, char.voice);
 
             card.innerHTML = `
@@ -231,7 +339,6 @@ function renderCharactersList(script, editable) {
             `;
             charsEl.appendChild(card);
         } else {
-            // 只读模式：角色标签
             const voiceLabel = char.voice ? ` 🎤${char.voice}` : '';
             const tag = document.createElement('span');
             tag.className = 'character-tag';
@@ -241,7 +348,6 @@ function renderCharactersList(script, editable) {
     });
 
     if (editable) {
-        // 添加角色按钮
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-outline btn-add-char';
         addBtn.innerHTML = '➕ 添加角色';
@@ -252,9 +358,6 @@ function renderCharactersList(script, editable) {
 
 function buildVoiceOptions(gender, selectedVoice) {
     let options = '<option value="">自动分配</option>';
-    const allVoices = [...(voiceData.male || []), ...(voiceData.female || [])];
-
-    // 优先展示匹配性别的音色
     const primary = gender === 'female' ? (voiceData.female || []) : (voiceData.male || []);
     const secondary = gender === 'female' ? (voiceData.male || []) : (voiceData.female || []);
 
@@ -283,7 +386,6 @@ function onCharGenderChange(selectEl) {
 }
 
 function onVoiceChange(selectEl) {
-    // 选择音色时自动播放试听
     const voiceName = selectEl.value;
     if (voiceName && voiceSampleMap[voiceName]) {
         playVoiceSample(voiceSampleMap[voiceName]);
@@ -357,7 +459,6 @@ function renderSegmentsList(script, editable) {
         const emotionText = emotionLabels[seg.emotion] || seg.emotion;
         const subTypeText = seg.subType ? (subTypeLabels[seg.subType] || seg.subType) : '';
 
-        // 内心独白依附标注
         let innerLabel = '';
         if (seg.subType === 'inner_thought' && seg.characterId && seg.characterId !== 'narrator') {
             const attachedChar = charMap[seg.characterId];
@@ -371,7 +472,6 @@ function renderSegmentsList(script, editable) {
         item.dataset.index = idx;
 
         if (editable) {
-            // 角色选项
             const charOptions = script.characters
                 .map(c => `<option value="${c.id}" ${c.id === seg.characterId ? 'selected' : ''}>${c.name}</option>`)
                 .join('');
@@ -460,7 +560,6 @@ function onTypeChange(selectEl) {
 async function saveScript() {
     if (!currentScript || !currentTaskId) return;
 
-    // 收集角色编辑数据
     const charCards = document.querySelectorAll('.character-card.editing');
     const updatedChars = [];
     charCards.forEach((card, i) => {
@@ -475,7 +574,6 @@ async function saveScript() {
         });
     });
 
-    // 收集段落编辑数据
     const segments = [];
     const items = document.querySelectorAll('.segment-item.editing');
     items.forEach((item, idx) => {
@@ -499,9 +597,10 @@ async function saveScript() {
     try {
         const res = await fetch(`/api/tasks/${currentTaskId}/script`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders(),
             body: JSON.stringify(updatedScript)
         });
+        if (res.status === 401) return logout();
         if (!res.ok) throw new Error('保存失败');
 
         currentScript = updatedScript;
@@ -537,9 +636,10 @@ async function regenerateScript() {
     try {
         const res = await fetch(`/api/tasks/${currentTaskId}/script/regenerate`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders(),
             body: JSON.stringify({ instruction: instruction })
         });
+        if (res.status === 401) return logout();
         if (!res.ok) throw new Error('提交失败');
         hideRegenDialog();
         startPolling();
@@ -558,7 +658,11 @@ async function startSynthesis() {
     btn.innerHTML = '<span class="spinner"></span> 合成中...';
 
     try {
-        const res = await fetch(`/api/tasks/${currentTaskId}/synthesize`, { method: 'POST' });
+        const res = await fetch(`/api/tasks/${currentTaskId}/synthesize`, {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        if (res.status === 401) return logout();
         if (!res.ok) throw new Error('启动合成失败');
         setStep(3);
         startPolling();
@@ -572,7 +676,8 @@ async function startSynthesis() {
 // ===== 音频展示 =====
 function showAudioSection() {
     const player = document.getElementById('audio-player');
-    player.src = `/api/tasks/${currentTaskId}/audio`;
+    const token = getToken();
+    player.src = `/api/tasks/${currentTaskId}/audio?token=${encodeURIComponent(token)}`;
     showSection('audio');
     setStep(3);
 
@@ -585,7 +690,8 @@ function showAudioSection() {
 }
 
 function downloadAudio() {
-    window.open(`/api/tasks/${currentTaskId}/audio`, '_blank');
+    const token = getToken();
+    window.open(`/api/tasks/${currentTaskId}/audio?token=${encodeURIComponent(token)}`, '_blank');
 }
 
 // ===== 重置 =====
@@ -605,6 +711,11 @@ function resetAll() {
     document.getElementById('section-audio').style.display = 'none';
     document.getElementById('section-upload').style.display = 'block';
 
+    // Enable inputs
+    document.getElementById('chapter-title').readOnly = false;
+    document.getElementById('chapter-content').readOnly = false;
+    document.getElementById('btn-upload').style.display = 'inline-block';
+
     setStep(1);
     loadHistory();
 }
@@ -612,7 +723,8 @@ function resetAll() {
 // ===== 任务历史 =====
 async function loadHistory() {
     try {
-        const res = await fetch('/api/tasks');
+        const res = await fetch('/api/tasks', { headers: authHeaders() });
+        if (res.status === 401) return logout();
         if (!res.ok) return;
         const tasks = await res.json();
 
@@ -627,6 +739,7 @@ async function loadHistory() {
             const statusClass = task.status.toLowerCase().replace('_', '-');
             const item = document.createElement('div');
             item.className = 'history-item';
+            item.onclick = () => loadTaskDetails(task.id);
             item.innerHTML = `
                 <div class="history-info">
                     <span class="history-title">任务 #${task.id} — 章节 #${task.chapterId}</span>
@@ -638,6 +751,67 @@ async function loadHistory() {
         }
     } catch (err) {
         console.error('加载历史失败:', err);
+    }
+}
+
+async function loadTaskDetails(taskId) {
+    try {
+        const res = await fetch(`/api/tasks/${taskId}`, { headers: authHeaders() });
+        if (res.status === 401) return logout();
+        if (!res.ok) throw new Error('无法加载任务详情');
+        const task = await res.json();
+
+        currentTaskId = task.id;
+        currentChapterId = task.chapterId;
+        saveUserState();
+
+        // Load chapter text
+        try {
+            const chapRes = await fetch(`/api/chapters/${task.chapterId}`, { headers: authHeaders() });
+            if (chapRes.ok) {
+                const chap = await chapRes.json();
+                document.getElementById('chapter-title').value = chap.title;
+                document.getElementById('chapter-content').value = chap.content;
+                document.getElementById('word-count').textContent = chap.content.length;
+            }
+        } catch (e) {
+            console.warn('Failed to fetch chapter', e);
+        }
+
+        // 保持 section-upload 可见，但禁用输入
+        document.getElementById('section-upload').style.display = 'block';
+        document.getElementById('chapter-title').readOnly = true;
+        document.getElementById('chapter-content').readOnly = true;
+        document.getElementById('btn-upload').style.display = 'none';
+
+        if (task.status === 'PENDING' || task.status === 'ANALYZING') {
+            setStep(1);
+            showSection('status');
+            document.getElementById('section-script').style.display = 'none';
+            document.getElementById('section-audio').style.display = 'none';
+            startPolling();
+        } else if (task.status === 'SCRIPT_READY') {
+            setStep(2);
+            showSection('status');
+            document.getElementById('section-audio').style.display = 'none';
+            startPolling(); // it will fetch script and transition
+        } else if (task.status === 'SYNTHESIZING') {
+            setStep(3);
+            showSection('status');
+            startPolling(); // wait for TTS
+        } else if (task.status === 'COMPLETED') {
+            document.getElementById('section-status').style.display = 'none';
+            // 手动渲染一次script
+            loadScript().then(() => {
+                showAudioSection(); // section-upload, section-script, section-audio 全展示
+            });
+        } else if (task.status === 'FAILED') {
+            setStep(1);
+            showSection('status');
+            document.getElementById('task-status-text').textContent = '任务执行失败: ' + (task.errorMessage || '');
+        }
+    } catch (err) {
+        showToast(err.message);
     }
 }
 

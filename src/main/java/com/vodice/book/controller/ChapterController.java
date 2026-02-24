@@ -1,6 +1,7 @@
 package com.vodice.book.controller;
 
 import com.vodice.book.model.Chapter;
+import com.vodice.book.security.SecurityUtil;
 import com.vodice.book.service.ChapterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,25 +19,29 @@ public class ChapterController {
 
     @PostMapping
     public ResponseEntity<Chapter> create(@RequestBody Map<String, String> body) {
+        Long userId = SecurityUtil.getCurrentUserId();
         String title = body.get("title");
         String content = body.get("content");
-        Chapter chapter = chapterService.create(title, content);
+        Chapter chapter = chapterService.create(userId, title, content);
         return ResponseEntity.ok(chapter);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Chapter> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(chapterService.getById(id));
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(chapterService.getById(id, userId));
     }
 
     @GetMapping
     public ResponseEntity<List<Chapter>> getAll() {
-        return ResponseEntity.ok(chapterService.getAll());
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(chapterService.getAll(userId));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        chapterService.delete(id);
+        Long userId = SecurityUtil.getCurrentUserId();
+        chapterService.delete(id, userId);
         return ResponseEntity.ok().build();
     }
 }

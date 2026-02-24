@@ -16,6 +16,9 @@ public class Task {
     private Long id;
 
     @Column(nullable = false)
+    private Long userId;
+
+    @Column(nullable = false)
     private Long chapterId;
 
     @Enumerated(EnumType.STRING)
@@ -25,7 +28,7 @@ public class Task {
     @Column(nullable = false)
     private Integer progress = 0;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String readingScriptJson;
 
     private String audioFilePath;

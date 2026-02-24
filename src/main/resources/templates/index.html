@@ -20,6 +20,13 @@
                 <h1>VodiceBook</h1>
             </div>
             <p class="tagline">AI 小说转有声书</p>
+            <div class="user-area" style="margin-left:auto; display:flex; align-items:center; gap:12px;">
+                <button id="btn-new" class="btn btn-primary" style="display:none; padding:6px 14px; font-size:13px;"
+                    onclick="createNewDraft()">新建有声书</button>
+                <span id="user-info" style="display:none; color:rgba(255,255,255,0.8); font-size:14px;"></span>
+                <button id="btn-logout" class="btn btn-outline" style="display:none; padding:6px 14px; font-size:13px;"
+                    onclick="logout()">退出登录</button>
+            </div>
         </div>
     </header>
 

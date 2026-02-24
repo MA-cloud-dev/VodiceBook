@@ -2,6 +2,8 @@ package com.vodice.book.controller;
 
 import com.vodice.book.model.Task;
 import com.vodice.book.model.dto.ReadingScript;
+import com.vodice.book.security.JwtTokenProvider;
+import com.vodice.book.security.SecurityUtil;
 import com.vodice.book.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.FileSystemResource;
@@ -19,17 +21,19 @@ import java.util.Map;
 public class TaskController {
 
     private final TaskService taskService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 创建任务并立即开始 LLM 分析
      */
     @PostMapping
     public ResponseEntity<Task> create(@RequestBody Map<String, Long> body) {
+        Long userId = SecurityUtil.getCurrentUserId();
         Long chapterId = body.get("chapterId");
         if (chapterId == null) {
             return ResponseEntity.badRequest().build();
         }
-        Task task = taskService.createTask(chapterId);
+        Task task = taskService.createTask(userId, chapterId);
 
         // 自动开始 LLM 分析
         taskService.startAnalysis(task.getId());
@@ -39,12 +43,14 @@ public class TaskController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Task> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(taskService.getById(id));
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(taskService.getById(id, userId));
     }
 
     @GetMapping
     public ResponseEntity<List<Task>> getAll() {
-        return ResponseEntity.ok(taskService.getAll());
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(taskService.getAll(userId));
     }
 
     /**
@@ -52,7 +58,8 @@ public class TaskController {
      */
     @GetMapping("/{id}/script")
     public ResponseEntity<ReadingScript> getScript(@PathVariable Long id) {
-        return ResponseEntity.ok(taskService.getScript(id));
+        Long userId = SecurityUtil.getCurrentUserId();
+        return ResponseEntity.ok(taskService.getScript(id, userId));
     }
 
     /**
@@ -61,7 +68,8 @@ public class TaskController {
     @PutMapping("/{id}/script")
     public ResponseEntity<Void> updateScript(@PathVariable Long id,
             @RequestBody ReadingScript script) {
-        taskService.updateScript(id, script);
+        Long userId = SecurityUtil.getCurrentUserId();
+        taskService.updateScript(id, userId, script);
         return ResponseEntity.ok().build();
     }
 
@@ -71,12 +79,13 @@ public class TaskController {
     @PostMapping("/{id}/script/regenerate")
     public ResponseEntity<Task> regenerateScript(@PathVariable Long id,
             @RequestBody Map<String, String> body) {
+        Long userId = SecurityUtil.getCurrentUserId();
         String instruction = body.get("instruction");
         if (instruction == null || instruction.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
         taskService.regenerateScript(id, instruction);
-        return ResponseEntity.ok(taskService.getById(id));
+        return ResponseEntity.ok(taskService.getById(id, userId));
     }
 
     /**
@@ -84,16 +93,31 @@ public class TaskController {
      */
     @PostMapping("/{id}/synthesize")
     public ResponseEntity<Task> synthesize(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        // 校验权限
+        taskService.getById(id, userId);
         taskService.startSynthesis(id);
-        return ResponseEntity.ok(taskService.getById(id));
+        return ResponseEntity.ok(taskService.getById(id, userId));
     }
 
     /**
      * 播放/下载音频（支持浏览器在线播放）
      */
     @GetMapping("/{id}/audio")
-    public ResponseEntity<Resource> downloadAudio(@PathVariable Long id) {
-        Task task = taskService.getById(id);
+    public ResponseEntity<Resource> downloadAudio(@PathVariable Long id,
+            @RequestParam(value = "token", required = false) String token) {
+        // 音频端点通过 query param token 认证（HTML audio 标签不支持 header）
+        Long userId;
+        if (token != null && jwtTokenProvider.validateToken(token)) {
+            userId = jwtTokenProvider.getUserIdFromToken(token);
+        } else {
+            try {
+                userId = SecurityUtil.getCurrentUserId();
+            } catch (Exception e) {
+                return ResponseEntity.status(401).build();
+            }
+        }
+        Task task = taskService.getById(id, userId);
         if (task.getAudioFilePath() == null) {
             return ResponseEntity.notFound().build();
         }
@@ -104,7 +128,6 @@ public class TaskController {
         }
 
         Resource resource = new FileSystemResource(audioFile);
-        // 使用 audio/mpeg 类型 + inline 模式，支持浏览器在线播放
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/wav"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -117,7 +140,8 @@ public class TaskController {
      */
     @PostMapping("/{id}/retry")
     public ResponseEntity<Task> retry(@PathVariable Long id) {
-        Task task = taskService.retry(id);
+        Long userId = SecurityUtil.getCurrentUserId();
+        Task task = taskService.retry(id, userId);
         taskService.startAnalysis(task.getId());
         return ResponseEntity.ok(task);
     }
