@@ -6,9 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VodiceBook — AI 小说转有声书</title>
     <meta name="description" content="AI驱动的小说转有声书平台，自动角色识别、朗读稿生成、多角色语音合成">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/img/index-illustration.png?v=2">
     <link rel="stylesheet" href="/css/style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
@@ -16,14 +18,14 @@
     <header class="header">
         <div class="header-content">
             <div class="logo">
-                <span class="logo-icon">🎧</span>
+                <img src="/img/index-illustration.png" alt="VodiceBook Logo" class="logo-img">
                 <h1>VodiceBook</h1>
             </div>
             <p class="tagline">AI 小说转有声书</p>
             <div class="user-area" style="margin-left:auto; display:flex; align-items:center; gap:12px;">
                 <button id="btn-new" class="btn btn-primary" style="display:none; padding:6px 14px; font-size:13px;"
                     onclick="createNewDraft()">新建有声书</button>
-                <span id="user-info" style="display:none; color:rgba(255,255,255,0.8); font-size:14px;"></span>
+                <span id="user-info" style="display:none; color:var(--text-secondary); font-size:14px;"></span>
                 <button id="btn-logout" class="btn btn-outline" style="display:none; padding:6px 14px; font-size:13px;"
                     onclick="logout()">退出登录</button>
             </div>
@@ -51,7 +53,7 @@
 
         <!-- 第一步：上传章节 -->
         <section id="section-upload" class="card">
-            <h2 class="card-title">📝 上传章节文本</h2>
+            <h2 class="card-title"><i data-lucide="file-edit" class="icon-inline"></i> 上传章节文本</h2>
             <div class="form-group">
                 <label for="chapter-title">章节标题</label>
                 <input type="text" id="chapter-title" placeholder="例如：第一章 初入江湖" maxlength="128">
@@ -62,13 +64,13 @@
                 <div class="char-count"><span id="word-count">0</span> 字</div>
             </div>
             <button id="btn-upload" class="btn btn-primary" onclick="uploadChapter()">
-                <span class="btn-icon">🚀</span> 上传并分析
+                <i data-lucide="rocket" class="icon-inline"></i> 上传并分析
             </button>
         </section>
 
         <!-- 状态面板 -->
         <section id="section-status" class="card" style="display:none;">
-            <h2 class="card-title">⏳ 任务状态</h2>
+            <h2 class="card-title"><i data-lucide="hourglass" class="icon-inline"></i> 任务状态</h2>
             <div class="status-panel">
                 <div class="status-row">
                     <span class="status-label">状态</span>
@@ -87,22 +89,22 @@
 
         <!-- 第二步：朗读稿预览 -->
         <section id="section-script" class="card" style="display:none;">
-            <h2 class="card-title">📖 朗读稿预览</h2>
+            <h2 class="card-title"><i data-lucide="book-open" class="icon-inline"></i> 朗读稿预览</h2>
             <div id="characters-list" class="characters-list"></div>
 
             <!-- 朗读稿操作栏 -->
             <div class="script-actions">
                 <button id="btn-edit-mode" class="btn btn-secondary" onclick="toggleEditMode()">
-                    ✏️ 编辑朗读稿
+                    <i data-lucide="edit-3" class="icon-inline"></i> 编辑朗读稿
                 </button>
                 <button id="btn-save-script" class="btn btn-primary" style="display:none;" onclick="saveScript()">
-                    ✅ 保存修改
+                    <i data-lucide="check" class="icon-inline"></i> 保存修改
                 </button>
                 <button id="btn-cancel-edit" class="btn btn-outline" style="display:none;" onclick="cancelEdit()">
-                    ❌ 取消
+                    <i data-lucide="x" class="icon-inline"></i> 取消
                 </button>
                 <button id="btn-ai-regen" class="btn btn-outline" onclick="showRegenDialog()">
-                    🤖 AI 重新生成
+                    <i data-lucide="bot" class="icon-inline"></i> AI 重新生成
                 </button>
             </div>
 
@@ -112,7 +114,7 @@
                 <textarea id="regen-instruction" rows="3" placeholder="例如：把第3段旁白改为李逍遥的内心独白；或者：重新分析所有角色的情感"></textarea>
                 <div class="regen-actions">
                     <button id="btn-regen-submit" class="btn btn-primary" onclick="regenerateScript()">
-                        🚀 提交给 AI
+                        <i data-lucide="rocket" class="icon-inline"></i> 提交给 AI
                     </button>
                     <button class="btn btn-outline" onclick="hideRegenDialog()">取消</button>
                 </div>
@@ -121,30 +123,30 @@
             <div id="segments-list" class="segments-list"></div>
             <div class="action-row">
                 <button id="btn-synthesize" class="btn btn-primary" onclick="startSynthesis()">
-                    <span class="btn-icon">🎵</span> 开始语音合成
+                    <i data-lucide="music" class="icon-inline"></i> 开始语音合成
                 </button>
             </div>
         </section>
 
         <!-- 第三步：音频结果 -->
         <section id="section-audio" class="card" style="display:none;">
-            <h2 class="card-title">🎧 音频结果</h2>
+            <h2 class="card-title"><i data-lucide="headphones" class="icon-inline"></i> 音频结果</h2>
             <div class="audio-player-container">
                 <audio id="audio-player" controls class="audio-player"></audio>
             </div>
             <div class="action-row">
                 <button id="btn-download" class="btn btn-secondary" onclick="downloadAudio()">
-                    <span class="btn-icon">💾</span> 下载音频
+                    <i data-lucide="download" class="icon-inline"></i> 下载音频
                 </button>
                 <button class="btn btn-outline" onclick="resetAll()">
-                    <span class="btn-icon">🔄</span> 重新开始
+                    <i data-lucide="rotate-ccw" class="icon-inline"></i> 重新开始
                 </button>
             </div>
         </section>
 
         <!-- 任务历史 -->
         <section id="section-history" class="card">
-            <h2 class="card-title">📋 任务历史</h2>
+            <h2 class="card-title"><i data-lucide="history" class="icon-inline"></i> 任务历史</h2>
             <div id="task-history" class="task-history">
                 <p class="empty-hint">暂无历史任务</p>
             </div>
@@ -156,6 +158,11 @@
     </footer>
 
     <script src="/js/app.js"></script>
+    <script>
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    </script>
 </body>
 
 </html>

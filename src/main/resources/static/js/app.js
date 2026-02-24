@@ -212,7 +212,8 @@ async function uploadChapter() {
         showToast('操作失败: ' + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span class="btn-icon">🚀</span> 上传并分析';
+        btn.innerHTML = '<i data-lucide="rocket" class="icon-inline"></i> 上传并分析';
+        refreshIcons();
     }
 }
 
@@ -333,13 +334,13 @@ function renderCharactersList(script, editable) {
                 <div class="char-card-row">
                     <label>音色：</label>
                     <select class="char-edit-voice" onchange="onVoiceChange(this)">${voiceOpts}</select>
-                    <button class="btn-voice-preview" onclick="previewVoice(this)" title="试听音色">🔊</button>
+                    <button class="btn-voice-preview" onclick="previewVoice(this)" title="试听音色"><i data-lucide="volume-2" class="icon-inline"></i></button>
                 </div>
-                <button class="btn-char-delete" onclick="deleteCharacter(${i})" title="删除角色">✕</button>
+                <button class="btn-char-delete" onclick="deleteCharacter(${i})" title="删除角色"><i data-lucide="x" class="icon-inline"></i></button>
             `;
             charsEl.appendChild(card);
         } else {
-            const voiceLabel = char.voice ? ` 🎤${char.voice}` : '';
+            const voiceLabel = char.voice ? ` <i data-lucide="mic" class="icon-inline" style="width:12px;height:12px;"></i>${char.voice}` : '';
             const tag = document.createElement('span');
             tag.className = 'character-tag';
             tag.innerHTML = `<span class="character-dot" style="background:${color}"></span>${char.name} <span class="gender-icon">${genderIcon}</span>${voiceLabel}`;
@@ -350,10 +351,11 @@ function renderCharactersList(script, editable) {
     if (editable) {
         const addBtn = document.createElement('button');
         addBtn.className = 'btn btn-outline btn-add-char';
-        addBtn.innerHTML = '➕ 添加角色';
+        addBtn.innerHTML = '<i data-lucide="plus" class="icon-inline"></i> 添加角色';
         addBtn.onclick = addCharacter;
         charsEl.appendChild(addBtn);
     }
+    refreshIcons();
 }
 
 function buildVoiceOptions(gender, selectedVoice) {
@@ -463,7 +465,7 @@ function renderSegmentsList(script, editable) {
         if (seg.subType === 'inner_thought' && seg.characterId && seg.characterId !== 'narrator') {
             const attachedChar = charMap[seg.characterId];
             if (attachedChar) {
-                innerLabel = `<span class="inner-attach-badge">💭 ${attachedChar.name}的内心</span>`;
+                innerLabel = `<span class="inner-attach-badge"><i data-lucide="message-circle" class="icon-inline" style="width:12px;height:12px;"></i> ${attachedChar.name}的内心</span>`;
             }
         }
 
@@ -522,6 +524,7 @@ function renderSegmentsList(script, editable) {
         }
         segsEl.appendChild(item);
     });
+    refreshIcons();
 }
 
 // ===== 编辑模式 =====
@@ -607,7 +610,7 @@ async function saveScript() {
         isEditMode = false;
         updateEditButtons(false);
         renderScript(updatedScript);
-        showToast('朗读稿已保存 ✅');
+        showToast('朗读稿已保存');
     } catch (err) {
         showToast('保存失败: ' + err.message);
     }
@@ -647,7 +650,8 @@ async function regenerateScript() {
         showToast('提交失败: ' + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '🚀 提交给 AI';
+        btn.innerHTML = '<i data-lucide="rocket" class="icon-inline"></i> 提交给 AI';
+        refreshIcons();
     }
 }
 
@@ -669,7 +673,8 @@ async function startSynthesis() {
     } catch (err) {
         showToast('启动合成失败: ' + err.message);
         btn.disabled = false;
-        btn.innerHTML = '<span class="btn-icon">🎵</span> 开始语音合成';
+        btn.innerHTML = '<i data-lucide="music" class="icon-inline"></i> 开始语音合成';
+        refreshIcons();
     }
 }
 
@@ -684,9 +689,10 @@ function showAudioSection() {
     const btn = document.getElementById('btn-synthesize');
     if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<span class="btn-icon">🎵</span> 开始语音合成';
+        btn.innerHTML = '<i data-lucide="music" class="icon-inline"></i> 开始语音合成';
     }
     loadHistory();
+    refreshIcons();
 }
 
 function downloadAudio() {
@@ -845,4 +851,10 @@ function formatTime(isoStr) {
 
 function showToast(msg) {
     alert(msg);
+}
+
+function refreshIcons() {
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 }

@@ -1,22 +1,22 @@
 /* ===== 设计系统 ===== */
 :root {
-    --bg-primary: #0a0e17;
-    --bg-secondary: #111827;
-    --bg-card: #1a2236;
-    --bg-hover: #243050;
-    --text-primary: #e8edf5;
-    --text-secondary: #8b95a8;
-    --text-muted: #5a6478;
-    --accent: #6366f1;
-    --accent-hover: #818cf8;
-    --accent-glow: rgba(99, 102, 241, 0.25);
-    --success: #10b981;
-    --warning: #f59e0b;
-    --error: #ef4444;
-    --border: #1f2937;
-    --radius: 12px;
+    --bg-primary: #F0F4F2;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-hover: #E3EDE8;
+    --text-primary: #2C3E38;
+    --text-secondary: #4A5D54;
+    --text-muted: #8EACA0;
+    --accent: #5A7D6C;
+    --accent-hover: #4A6D5C;
+    --accent-glow: rgba(90, 125, 108, 0.25);
+    --success: #5A7D6C;
+    --warning: #D2A06E;
+    --error: #C26B63;
+    --border: #D2E0DA;
+    --radius: 16px;
     --radius-sm: 8px;
-    --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    --shadow: 0 10px 40px rgba(44, 62, 56, 0.06);
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -60,27 +60,33 @@ body {
     gap: 0.75rem;
 }
 
-.logo-icon {
-    font-size: 1.8rem;
-    animation: pulse 2s ease-in-out infinite;
+.logo-img {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    object-fit: cover;
+    mix-blend-mode: multiply;
+    animation: floating 3s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes floating {
 
     0%,
     100% {
-        transform: scale(1);
+        transform: translateY(0);
     }
 
     50% {
-        transform: scale(1.1);
+        transform: translateY(-3px);
     }
 }
+
+
 
 .logo h1 {
     font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, var(--accent) 0%, #a78bfa 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, #8FB5A3 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -263,7 +269,7 @@ textarea {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, #4A6D5C 100%);
     color: white;
     box-shadow: 0 4px 12px var(--accent-glow);
 }
@@ -335,7 +341,7 @@ textarea {
 }
 
 .status-badge.analyzing {
-    background: rgba(99, 102, 241, 0.15);
+    background: rgba(90, 125, 108, 0.15);
     color: var(--accent);
 }
 
@@ -369,7 +375,7 @@ textarea {
 
 .progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent), #a78bfa);
+    background: linear-gradient(90deg, var(--accent), #8FB5A3);
     border-radius: 3px;
     transition: width 0.5s ease;
 }
@@ -609,6 +615,15 @@ textarea {
     }
 }
 
+/* ===== 前端 SVG 矢量体图标支持 ===== */
+.icon-inline {
+    width: 1.25em;
+    height: 1.25em;
+    vertical-align: text-bottom;
+    display: inline-block;
+    stroke-width: 2;
+}
+
 /* ===== 朗读稿操作栏 ===== */
 .script-actions {
     display: flex;
@@ -632,7 +647,7 @@ textarea {
     border-radius: 8px;
     font-size: 0.7rem;
     font-weight: 500;
-    background: rgba(99, 102, 241, 0.12);
+    background: rgba(90, 125, 108, 0.12);
     color: var(--accent);
 }
 

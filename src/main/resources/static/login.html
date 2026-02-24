@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 — VodiceBook</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="/img/index-illustration.png?v=2">
     <link rel="stylesheet" href="/css/style.css">
     <style>
         .login-page {
@@ -14,18 +15,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            background: linear-gradient(135deg, #F0F4F2 0%, #E3EDE8 100%);
         }
 
         .login-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #ffffff;
+            border: 1px solid #D2E0DA;
             border-radius: 20px;
             padding: 48px 40px;
             width: 100%;
             max-width: 420px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 40px rgba(44, 62, 56, 0.06);
         }
 
         .login-logo {
@@ -33,21 +33,25 @@
             margin-bottom: 32px;
         }
 
-        .login-logo .logo-icon {
-            font-size: 48px;
+        .login-logo .logo-img {
+            width: 140px;
+            height: 140px;
+            object-fit: cover;
             display: block;
-            margin-bottom: 12px;
+            margin: 0 auto 16px auto;
+            border-radius: 24px;
+            mix-blend-mode: multiply;
         }
 
         .login-logo h1 {
-            color: #fff;
+            color: #2C3E38;
             font-size: 28px;
             font-weight: 700;
             margin: 0;
         }
 
         .login-logo p {
-            color: rgba(255, 255, 255, 0.5);
+            color: #4A5D54;
             font-size: 14px;
             margin-top: 4px;
         }
@@ -57,7 +61,7 @@
         }
 
         .login-form label {
-            color: rgba(255, 255, 255, 0.7);
+            color: #4A5D54;
             font-size: 13px;
             font-weight: 500;
             display: block;
@@ -67,10 +71,10 @@
         .login-form input {
             width: 100%;
             padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: #F0F4F2;
+            border: 1px solid #D2E0DA;
             border-radius: 10px;
-            color: #fff;
+            color: #2C3E38;
             font-size: 15px;
             font-family: 'Inter', sans-serif;
             transition: all 0.3s ease;
@@ -79,19 +83,19 @@
 
         .login-form input:focus {
             outline: none;
-            border-color: #6366f1;
-            background: rgba(255, 255, 255, 0.12);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            border-color: #5A7D6C;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(90, 125, 108, 0.2);
         }
 
         .login-form input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+            color: #8EACA0;
         }
 
         .login-btn {
             width: 100%;
             padding: 14px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            background: linear-gradient(135deg, #5A7D6C 0%, #4A6D5C 100%);
             border: none;
             border-radius: 10px;
             color: #fff;
@@ -105,7 +109,7 @@
 
         .login-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 8px 25px rgba(90, 125, 108, 0.3);
         }
 
         .login-btn:active {
@@ -119,7 +123,7 @@
         }
 
         .login-error {
-            color: #ef4444;
+            color: #C26B63;
             font-size: 13px;
             margin-top: 12px;
             text-align: center;
@@ -150,7 +154,7 @@
     <div class="login-page">
         <div class="login-card">
             <div class="login-logo">
-                <span class="logo-icon">🎧</span>
+                <img src="/img/login-illustration.png" alt="VodiceBook Illustration" class="logo-img">
                 <h1>VodiceBook</h1>
                 <p>AI 小说转有声书</p>
             </div>
