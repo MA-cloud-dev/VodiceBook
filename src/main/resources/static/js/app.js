@@ -2,6 +2,11 @@
 let currentTaskId = null;
 let currentChapterId = null;
 let pollingTimer = null;
+let isEditMode = false;
+let currentScript = null;
+let voiceData = { male: [], female: [] }; // 缓存音色列表
+let voiceSampleMap = {}; // 音色名 -> 样本音频路径
+let previewAudio = null; // 全局试听播放器
 
 // ===== 颜色映射（角色标识用） =====
 const characterColors = [
@@ -24,6 +29,11 @@ const emotionLabels = {
     'gentle': '温柔', 'serious': '严肃', 'curious': '好奇', 'shy': '害羞'
 };
 
+const emotionOptions = Object.entries(emotionLabels);
+
+const typeLabels = { 'narration': '旁白', 'dialogue': '对话' };
+const subTypeLabels = { 'general': '通用叙述', 'inner_thought': '内心独白' };
+
 // ===== 字数统计 =====
 const contentEl = document.getElementById('chapter-content');
 const wordCountEl = document.getElementById('word-count');
@@ -32,8 +42,28 @@ contentEl.addEventListener('input', () => {
     wordCountEl.textContent = contentEl.value.length;
 });
 
-// ===== 页面加载时获取历史任务 =====
-document.addEventListener('DOMContentLoaded', loadHistory);
+// ===== 页面加载 =====
+document.addEventListener('DOMContentLoaded', () => {
+    loadHistory();
+    loadVoices();
+});
+
+// ===== 加载音色列表 =====
+async function loadVoices() {
+    try {
+        const res = await fetch('/api/voices');
+        if (res.ok) {
+            voiceData = await res.json();
+            // 构建音色样本映射表
+            voiceSampleMap = {};
+            [...(voiceData.male || []), ...(voiceData.female || [])].forEach(v => {
+                if (v.sample) voiceSampleMap[v.name] = v.sample;
+            });
+        }
+    } catch (err) {
+        console.error('加载音色列表失败:', err);
+    }
+}
 
 // ===== 上传章节 =====
 async function uploadChapter() {
@@ -49,7 +79,6 @@ async function uploadChapter() {
     btn.innerHTML = '<span class="spinner"></span> 上传中...';
 
     try {
-        // 1. 创建章节
         const chapterRes = await fetch('/api/chapters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -59,7 +88,6 @@ async function uploadChapter() {
         const chapter = await chapterRes.json();
         currentChapterId = chapter.id;
 
-        // 2. 创建任务（自动开始分析）
         const taskRes = await fetch('/api/tasks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -69,11 +97,9 @@ async function uploadChapter() {
         const task = await taskRes.json();
         currentTaskId = task.id;
 
-        // 3. 显示状态面板，开始轮询
         setStep(2);
         showSection('status');
         startPolling();
-
     } catch (err) {
         showToast('操作失败: ' + err.message);
     } finally {
@@ -85,7 +111,7 @@ async function uploadChapter() {
 // ===== 状态轮询 =====
 function startPolling() {
     stopPolling();
-    pollStatus(); // 立即执行一次
+    pollStatus();
     pollingTimer = setInterval(pollStatus, 2000);
 }
 
@@ -98,12 +124,10 @@ function stopPolling() {
 
 async function pollStatus() {
     if (!currentTaskId) return;
-
     try {
         const res = await fetch(`/api/tasks/${currentTaskId}`);
         if (!res.ok) return;
         const task = await res.json();
-
         updateStatusPanel(task);
 
         if (task.status === 'SCRIPT_READY') {
@@ -139,7 +163,6 @@ function updateStatusPanel(task) {
     } else {
         errorEl.style.display = 'none';
     }
-
     document.getElementById('section-status').style.display = 'block';
 }
 
@@ -150,56 +173,381 @@ async function loadScript() {
         if (!res.ok) throw new Error('获取朗读稿失败');
         const script = await res.json();
 
+        currentScript = script;
+        isEditMode = false;
         renderScript(script);
         showSection('script');
         setStep(2);
+        updateEditButtons(false);
     } catch (err) {
         showToast('加载朗读稿失败: ' + err.message);
     }
 }
 
 function renderScript(script) {
-    // 渲染角色列表
+    renderCharactersList(script, false);
+    renderSegmentsList(script, false);
+}
+
+// ===== 角色列表渲染 =====
+function renderCharactersList(script, editable) {
     const charsEl = document.getElementById('characters-list');
     charsEl.innerHTML = '';
-    if (script.characters) {
-        script.characters.forEach((char, i) => {
-            const color = characterColors[i % characterColors.length];
+
+    if (!script.characters) return;
+
+    script.characters.forEach((char, i) => {
+        const color = characterColors[i % characterColors.length];
+        const genderIcon = char.gender === 'female' ? '♀' : char.gender === 'male' ? '♂' : '?';
+
+        if (editable) {
+            // 编辑模式：可编辑的角色卡片
+            const card = document.createElement('div');
+            card.className = 'character-card editing';
+            card.dataset.index = i;
+
+            // 音色下拉选项
+            const voiceOpts = buildVoiceOptions(char.gender, char.voice);
+
+            card.innerHTML = `
+                <div class="char-card-row">
+                    <label>名称：</label>
+                    <input type="text" class="char-edit-name" value="${escapeHtml(char.name)}" placeholder="角色名">
+                </div>
+                <div class="char-card-row">
+                    <label>性别：</label>
+                    <select class="char-edit-gender" onchange="onCharGenderChange(this)">
+                        <option value="male" ${char.gender === 'male' ? 'selected' : ''}>男</option>
+                        <option value="female" ${char.gender === 'female' ? 'selected' : ''}>女</option>
+                        <option value="unknown" ${char.gender === 'unknown' ? 'selected' : ''}>未知</option>
+                    </select>
+                </div>
+                <div class="char-card-row">
+                    <label>音色：</label>
+                    <select class="char-edit-voice" onchange="onVoiceChange(this)">${voiceOpts}</select>
+                    <button class="btn-voice-preview" onclick="previewVoice(this)" title="试听音色">🔊</button>
+                </div>
+                <button class="btn-char-delete" onclick="deleteCharacter(${i})" title="删除角色">✕</button>
+            `;
+            charsEl.appendChild(card);
+        } else {
+            // 只读模式：角色标签
+            const voiceLabel = char.voice ? ` 🎤${char.voice}` : '';
             const tag = document.createElement('span');
             tag.className = 'character-tag';
-            tag.innerHTML = `<span class="character-dot" style="background:${color}"></span>${char.name}`;
+            tag.innerHTML = `<span class="character-dot" style="background:${color}"></span>${char.name} <span class="gender-icon">${genderIcon}</span>${voiceLabel}`;
             charsEl.appendChild(tag);
-        });
-    }
+        }
+    });
 
-    // 构建角色名映射
+    if (editable) {
+        // 添加角色按钮
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-outline btn-add-char';
+        addBtn.innerHTML = '➕ 添加角色';
+        addBtn.onclick = addCharacter;
+        charsEl.appendChild(addBtn);
+    }
+}
+
+function buildVoiceOptions(gender, selectedVoice) {
+    let options = '<option value="">自动分配</option>';
+    const allVoices = [...(voiceData.male || []), ...(voiceData.female || [])];
+
+    // 优先展示匹配性别的音色
+    const primary = gender === 'female' ? (voiceData.female || []) : (voiceData.male || []);
+    const secondary = gender === 'female' ? (voiceData.male || []) : (voiceData.female || []);
+
+    if (primary.length) {
+        options += `<optgroup label="${gender === 'female' ? '女声' : '男声'}">`;
+        primary.forEach(v => {
+            options += `<option value="${v.name}" ${v.name === selectedVoice ? 'selected' : ''}>${v.label}</option>`;
+        });
+        options += '</optgroup>';
+    }
+    if (secondary.length) {
+        options += `<optgroup label="${gender === 'female' ? '男声' : '女声'}">`;
+        secondary.forEach(v => {
+            options += `<option value="${v.name}" ${v.name === selectedVoice ? 'selected' : ''}>${v.label}</option>`;
+        });
+        options += '</optgroup>';
+    }
+    return options;
+}
+
+function onCharGenderChange(selectEl) {
+    const card = selectEl.closest('.character-card');
+    const voiceSelect = card.querySelector('.char-edit-voice');
+    const currentVoice = voiceSelect.value;
+    voiceSelect.innerHTML = buildVoiceOptions(selectEl.value, currentVoice);
+}
+
+function onVoiceChange(selectEl) {
+    // 选择音色时自动播放试听
+    const voiceName = selectEl.value;
+    if (voiceName && voiceSampleMap[voiceName]) {
+        playVoiceSample(voiceSampleMap[voiceName]);
+    }
+}
+
+function previewVoice(btn) {
+    const card = btn.closest('.character-card');
+    const voiceSelect = card.querySelector('.char-edit-voice');
+    const voiceName = voiceSelect.value;
+    if (!voiceName) {
+        showToast('请先选择一个音色');
+        return;
+    }
+    const sampleUrl = voiceSampleMap[voiceName];
+    if (!sampleUrl) {
+        showToast('该音色暂无试听样本');
+        return;
+    }
+    playVoiceSample(sampleUrl);
+}
+
+function playVoiceSample(url) {
+    if (previewAudio) {
+        previewAudio.pause();
+        previewAudio = null;
+    }
+    previewAudio = new Audio(url);
+    previewAudio.play().catch(err => console.error('播放失败:', err));
+}
+
+function addCharacter() {
+    if (!currentScript) return;
+    const newId = 'char_' + Date.now();
+    currentScript.characters.push({
+        id: newId,
+        name: '新角色',
+        gender: 'unknown',
+        voice: null,
+        voiceProfile: null,
+        description: ''
+    });
+    renderCharactersList(currentScript, true);
+}
+
+function deleteCharacter(index) {
+    if (!currentScript || !currentScript.characters) return;
+    if (currentScript.characters.length <= 1) {
+        showToast('至少保留一个角色');
+        return;
+    }
+    currentScript.characters.splice(index, 1);
+    renderCharactersList(currentScript, true);
+}
+
+// ===== 段落列表渲染 =====
+function renderSegmentsList(script, editable) {
     const charMap = {};
     if (script.characters) {
         script.characters.forEach((c, i) => {
-            charMap[c.id] = { name: c.name, color: characterColors[i % characterColors.length] };
+            charMap[c.id] = { name: c.name, color: characterColors[i % characterColors.length], gender: c.gender };
         });
     }
 
-    // 渲染段落列表
     const segsEl = document.getElementById('segments-list');
     segsEl.innerHTML = '';
-    if (script.segments) {
-        script.segments.forEach(seg => {
-            const char = charMap[seg.characterId] || { name: seg.characterId, color: '#666' };
-            const emotionText = emotionLabels[seg.emotion] || seg.emotion;
+    if (!script.segments) return;
 
-            const item = document.createElement('div');
-            item.className = 'segment-item ' + seg.type;
+    script.segments.forEach((seg, idx) => {
+        const char = charMap[seg.characterId] || { name: seg.characterId, color: '#666' };
+        const emotionText = emotionLabels[seg.emotion] || seg.emotion;
+        const subTypeText = seg.subType ? (subTypeLabels[seg.subType] || seg.subType) : '';
+
+        // 内心独白依附标注
+        let innerLabel = '';
+        if (seg.subType === 'inner_thought' && seg.characterId && seg.characterId !== 'narrator') {
+            const attachedChar = charMap[seg.characterId];
+            if (attachedChar) {
+                innerLabel = `<span class="inner-attach-badge">💭 ${attachedChar.name}的内心</span>`;
+            }
+        }
+
+        const item = document.createElement('div');
+        item.className = 'segment-item ' + seg.type;
+        item.dataset.index = idx;
+
+        if (editable) {
+            // 角色选项
+            const charOptions = script.characters
+                .map(c => `<option value="${c.id}" ${c.id === seg.characterId ? 'selected' : ''}>${c.name}</option>`)
+                .join('');
+
+            const emotionOpts = emotionOptions
+                .map(([k, v]) => `<option value="${k}" ${k === seg.emotion ? 'selected' : ''}>${v}</option>`)
+                .join('');
+
+            const typeOpts = `
+                <option value="narration" ${seg.type === 'narration' ? 'selected' : ''}>旁白</option>
+                <option value="dialogue" ${seg.type === 'dialogue' ? 'selected' : ''}>对话</option>
+            `;
+
+            const subTypeOpts = `
+                <option value="" ${!seg.subType ? 'selected' : ''}>无</option>
+                <option value="general" ${seg.subType === 'general' ? 'selected' : ''}>通用叙述</option>
+                <option value="inner_thought" ${seg.subType === 'inner_thought' ? 'selected' : ''}>内心独白</option>
+            `;
+
+            item.className += ' editing';
+            item.innerHTML = `
+                <div class="segment-edit-form">
+                    <div class="edit-row">
+                        <label>角色：</label>
+                        <select class="edit-character">${charOptions}</select>
+                        <label>类型：</label>
+                        <select class="edit-type" onchange="onTypeChange(this)">${typeOpts}</select>
+                        <label>子类型：</label>
+                        <select class="edit-subtype" ${seg.type === 'dialogue' ? 'disabled' : ''}>${subTypeOpts}</select>
+                        <label>情感：</label>
+                        <select class="edit-emotion">${emotionOpts}</select>
+                    </div>
+                    <textarea class="edit-text" rows="2">${escapeHtml(seg.text)}</textarea>
+                </div>
+            `;
+        } else {
             item.innerHTML = `
                 <div class="segment-meta">
+                    <span class="seg-index">#${idx}</span>
                     <span class="char-name" style="color:${char.color}">${char.name}</span>
-                    <span>${seg.type === 'dialogue' ? '对话' : '旁白'}</span>
+                    <span class="type-badge">${seg.type === 'dialogue' ? '对话' : '旁白'}</span>
+                    ${subTypeText ? `<span class="subtype-badge">${subTypeText}</span>` : ''}
+                    ${innerLabel}
                     <span class="emotion-label">${emotionText}</span>
                 </div>
                 <div class="segment-text">${escapeHtml(seg.text)}</div>
             `;
-            segsEl.appendChild(item);
+        }
+        segsEl.appendChild(item);
+    });
+}
+
+// ===== 编辑模式 =====
+function toggleEditMode() {
+    if (!currentScript) return;
+    isEditMode = true;
+    updateEditButtons(true);
+    renderCharactersList(currentScript, true);
+    renderSegmentsList(currentScript, true);
+}
+
+function updateEditButtons(editing) {
+    document.getElementById('btn-edit-mode').style.display = editing ? 'none' : '';
+    document.getElementById('btn-save-script').style.display = editing ? '' : 'none';
+    document.getElementById('btn-cancel-edit').style.display = editing ? '' : 'none';
+    document.getElementById('btn-ai-regen').style.display = editing ? 'none' : '';
+    document.getElementById('btn-synthesize').disabled = editing;
+}
+
+function cancelEdit() {
+    isEditMode = false;
+    updateEditButtons(false);
+    renderScript(currentScript);
+}
+
+function onTypeChange(selectEl) {
+    const subTypeSelect = selectEl.closest('.edit-row').querySelector('.edit-subtype');
+    if (selectEl.value === 'dialogue') {
+        subTypeSelect.value = '';
+        subTypeSelect.disabled = true;
+    } else {
+        subTypeSelect.disabled = false;
+    }
+}
+
+async function saveScript() {
+    if (!currentScript || !currentTaskId) return;
+
+    // 收集角色编辑数据
+    const charCards = document.querySelectorAll('.character-card.editing');
+    const updatedChars = [];
+    charCards.forEach((card, i) => {
+        const origChar = currentScript.characters[i] || {};
+        updatedChars.push({
+            id: origChar.id || ('char_' + i),
+            name: card.querySelector('.char-edit-name').value.trim() || '未命名',
+            gender: card.querySelector('.char-edit-gender').value,
+            voice: card.querySelector('.char-edit-voice').value || null,
+            voiceProfile: origChar.voiceProfile || null,
+            description: origChar.description || ''
         });
+    });
+
+    // 收集段落编辑数据
+    const segments = [];
+    const items = document.querySelectorAll('.segment-item.editing');
+    items.forEach((item, idx) => {
+        segments.push({
+            index: idx,
+            type: item.querySelector('.edit-type').value,
+            subType: item.querySelector('.edit-subtype').value || null,
+            characterId: item.querySelector('.edit-character').value,
+            emotion: item.querySelector('.edit-emotion').value,
+            text: item.querySelector('.edit-text').value
+        });
+    });
+
+    const updatedScript = {
+        chapterId: currentScript.chapterId,
+        title: currentScript.title,
+        characters: updatedChars,
+        segments: segments
+    };
+
+    try {
+        const res = await fetch(`/api/tasks/${currentTaskId}/script`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedScript)
+        });
+        if (!res.ok) throw new Error('保存失败');
+
+        currentScript = updatedScript;
+        isEditMode = false;
+        updateEditButtons(false);
+        renderScript(updatedScript);
+        showToast('朗读稿已保存 ✅');
+    } catch (err) {
+        showToast('保存失败: ' + err.message);
+    }
+}
+
+// ===== AI 重新生成 =====
+function showRegenDialog() {
+    document.getElementById('regen-dialog').style.display = 'block';
+    document.getElementById('regen-instruction').focus();
+}
+
+function hideRegenDialog() {
+    document.getElementById('regen-dialog').style.display = 'none';
+    document.getElementById('regen-instruction').value = '';
+}
+
+async function regenerateScript() {
+    const instruction = document.getElementById('regen-instruction').value.trim();
+    if (!instruction) return showToast('请输入修改意见');
+    if (!currentTaskId) return;
+
+    const btn = document.getElementById('btn-regen-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> AI 处理中...';
+
+    try {
+        const res = await fetch(`/api/tasks/${currentTaskId}/script/regenerate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ instruction: instruction })
+        });
+        if (!res.ok) throw new Error('提交失败');
+        hideRegenDialog();
+        startPolling();
+    } catch (err) {
+        showToast('提交失败: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🚀 提交给 AI';
     }
 }
 
@@ -210,11 +558,8 @@ async function startSynthesis() {
     btn.innerHTML = '<span class="spinner"></span> 合成中...';
 
     try {
-        const res = await fetch(`/api/tasks/${currentTaskId}/synthesize`, {
-            method: 'POST'
-        });
+        const res = await fetch(`/api/tasks/${currentTaskId}/synthesize`, { method: 'POST' });
         if (!res.ok) throw new Error('启动合成失败');
-
         setStep(3);
         startPolling();
     } catch (err) {
@@ -231,13 +576,11 @@ function showAudioSection() {
     showSection('audio');
     setStep(3);
 
-    // 恢复合成按钮状态
     const btn = document.getElementById('btn-synthesize');
     if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<span class="btn-icon">🎵</span> 开始语音合成';
     }
-
     loadHistory();
 }
 
@@ -249,6 +592,8 @@ function downloadAudio() {
 function resetAll() {
     currentTaskId = null;
     currentChapterId = null;
+    currentScript = null;
+    isEditMode = false;
     stopPolling();
 
     document.getElementById('chapter-title').value = '';
@@ -298,14 +643,9 @@ async function loadHistory() {
 
 // ===== 工具函数 =====
 function showSection(name) {
-    const sections = ['upload', 'status', 'script', 'audio'];
-    // status 始终可见（只要有任务）
-    if (name === 'script') {
-        document.getElementById('section-script').style.display = 'block';
-    }
-    if (name === 'audio') {
-        document.getElementById('section-audio').style.display = 'block';
-    }
+    if (name === 'script') document.getElementById('section-script').style.display = 'block';
+    if (name === 'audio') document.getElementById('section-audio').style.display = 'block';
+    if (name === 'status') document.getElementById('section-status').style.display = 'block';
 }
 
 function setStep(num) {
@@ -330,6 +670,5 @@ function formatTime(isoStr) {
 }
 
 function showToast(msg) {
-    // 简单的 alert 替代，后续可升级为 toast UI
     alert(msg);
 }

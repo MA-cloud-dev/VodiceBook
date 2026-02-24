@@ -56,13 +56,27 @@ public class TaskController {
     }
 
     /**
-     * 更新朗读稿（用户修改）
+     * 更新朗读稿（用户手动修改）
      */
     @PutMapping("/{id}/script")
     public ResponseEntity<Void> updateScript(@PathVariable Long id,
             @RequestBody ReadingScript script) {
         taskService.updateScript(id, script);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * AI 重新生成朗读稿（根据用户指令）
+     */
+    @PostMapping("/{id}/script/regenerate")
+    public ResponseEntity<Task> regenerateScript(@PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String instruction = body.get("instruction");
+        if (instruction == null || instruction.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        taskService.regenerateScript(id, instruction);
+        return ResponseEntity.ok(taskService.getById(id));
     }
 
     /**

@@ -30,7 +30,6 @@ public class TaskService {
      * 创建新任务
      */
     public Task createTask(Long chapterId) {
-        // 验证章节存在
         chapterService.getById(chapterId);
 
         Task task = new Task();
@@ -65,7 +64,7 @@ public class TaskService {
     }
 
     /**
-     * 更新朗读稿（用户修改后提交）
+     * 更新朗读稿（用户手动修改后提交）
      */
     public void updateScript(Long taskId, ReadingScript script) {
         Task task = getById(taskId);
@@ -88,19 +87,15 @@ public class TaskService {
         Task task = getById(taskId);
 
         try {
-            // 更新状态为分析中
             task.setStatus(TaskStatus.ANALYZING);
             task.setProgress(10);
             taskRepository.save(task);
 
-            // 获取章节
             Chapter chapter = chapterService.getById(task.getChapterId());
 
-            // 调用 LLM 分析
             ReadingScript script = llmService.analyzeChapter(
                     chapter.getId(), chapter.getTitle(), chapter.getContent());
 
-            // 保存朗读稿
             task.setReadingScriptJson(objectMapper.writeValueAsString(script));
             task.setStatus(TaskStatus.SCRIPT_READY);
             task.setProgress(50);
@@ -111,6 +106,49 @@ public class TaskService {
             log.error("任务 {} LLM 分析失败", taskId, e);
             task.setStatus(TaskStatus.FAILED);
             task.setErrorMessage("LLM 分析失败: " + e.getMessage());
+            taskRepository.save(task);
+        }
+    }
+
+    /**
+     * 异步 AI 重新生成朗读稿（根据用户指令修改）
+     */
+    @Async("taskExecutor")
+    public void regenerateScript(Long taskId, String instruction) {
+        Task task = getById(taskId);
+
+        if (task.getStatus() != TaskStatus.SCRIPT_READY) {
+            throw new IllegalStateException("朗读稿未就绪，无法重新生成: " + task.getStatus());
+        }
+
+        try {
+            // 设置为分析中状态
+            task.setStatus(TaskStatus.ANALYZING);
+            task.setProgress(10);
+            task.setErrorMessage(null);
+            taskRepository.save(task);
+
+            // 获取当前朗读稿和原始章节
+            ReadingScript currentScript = objectMapper.readValue(
+                    task.getReadingScriptJson(), ReadingScript.class);
+            Chapter chapter = chapterService.getById(task.getChapterId());
+
+            // 调用 LLM 重新生成
+            ReadingScript newScript = llmService.regenerateScript(
+                    chapter.getId(), chapter.getTitle(), chapter.getContent(),
+                    currentScript, instruction);
+
+            // 保存新的朗读稿
+            task.setReadingScriptJson(objectMapper.writeValueAsString(newScript));
+            task.setStatus(TaskStatus.SCRIPT_READY);
+            task.setProgress(50);
+            taskRepository.save(task);
+
+            log.info("任务 {} 朗读稿重新生成完成", taskId);
+        } catch (Exception e) {
+            log.error("任务 {} 朗读稿重新生成失败", taskId, e);
+            task.setStatus(TaskStatus.FAILED);
+            task.setErrorMessage("AI 重新生成失败: " + e.getMessage());
             taskRepository.save(task);
         }
     }
@@ -134,9 +172,7 @@ public class TaskService {
             ReadingScript script = objectMapper.readValue(
                     task.getReadingScriptJson(), ReadingScript.class);
 
-            // 合成音频，带进度回调
             String audioPath = ttsService.synthesize(taskId, script, percent -> {
-                // 将 TTS 进度映射到 50-100 区间
                 int overallProgress = 50 + (percent / 2);
                 task.setProgress(overallProgress);
                 taskRepository.save(task);

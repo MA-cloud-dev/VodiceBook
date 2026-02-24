@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
     <!-- 顶部导航 -->
     <header class="header">
@@ -80,6 +82,35 @@
         <section id="section-script" class="card" style="display:none;">
             <h2 class="card-title">📖 朗读稿预览</h2>
             <div id="characters-list" class="characters-list"></div>
+
+            <!-- 朗读稿操作栏 -->
+            <div class="script-actions">
+                <button id="btn-edit-mode" class="btn btn-secondary" onclick="toggleEditMode()">
+                    ✏️ 编辑朗读稿
+                </button>
+                <button id="btn-save-script" class="btn btn-primary" style="display:none;" onclick="saveScript()">
+                    ✅ 保存修改
+                </button>
+                <button id="btn-cancel-edit" class="btn btn-outline" style="display:none;" onclick="cancelEdit()">
+                    ❌ 取消
+                </button>
+                <button id="btn-ai-regen" class="btn btn-outline" onclick="showRegenDialog()">
+                    🤖 AI 重新生成
+                </button>
+            </div>
+
+            <!-- AI 重新生成对话框 -->
+            <div id="regen-dialog" class="regen-dialog" style="display:none;">
+                <label class="regen-label">请描述你的修改意见：</label>
+                <textarea id="regen-instruction" rows="3" placeholder="例如：把第3段旁白改为李逍遥的内心独白；或者：重新分析所有角色的情感"></textarea>
+                <div class="regen-actions">
+                    <button id="btn-regen-submit" class="btn btn-primary" onclick="regenerateScript()">
+                        🚀 提交给 AI
+                    </button>
+                    <button class="btn btn-outline" onclick="hideRegenDialog()">取消</button>
+                </div>
+            </div>
+
             <div id="segments-list" class="segments-list"></div>
             <div class="action-row">
                 <button id="btn-synthesize" class="btn btn-primary" onclick="startSynthesis()">
@@ -119,4 +150,5 @@
 
     <script src="/js/app.js"></script>
 </body>
+
 </html>

@@ -23,8 +23,8 @@ app:
 llm:
   api-url: https://api.siliconflow.cn/v1/chat/completions
   api-key: ${LLM_API_KEY}
-  model: ${LLM_MODEL:Qwen/Qwen2.5-7B-Instruct}
-  max-tokens: 4096
+  model: ${LLM_MODEL:deepseek-ai/DeepSeek-V3}
+  max-tokens: ${LLM_MAX_TOKENS:8192}
   temperature: 0.3
   timeout-seconds: 120
 
