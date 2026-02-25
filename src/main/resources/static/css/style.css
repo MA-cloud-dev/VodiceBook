@@ -172,6 +172,180 @@ body {
     margin: 0 0.75rem;
 }
 
+/* ===== 导航栏 (Tabs) ===== */
+.nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+}
+
+.tab-item {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.tab-item:hover {
+    color: var(--accent);
+    background: var(--bg-hover);
+}
+
+.tab-item.active {
+    background: linear-gradient(135deg, var(--accent) 0%, #4A6D5C 100%);
+    color: white;
+    box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.4s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* ===== 全局进度条 ===== */
+.global-progress {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    animation: fadeIn 0.3s ease;
+}
+
+.gp-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.gp-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.gp-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: gpPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes gpPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.4;
+        transform: scale(0.7);
+    }
+}
+
+.gp-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#gp-percent {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    min-width: 36px;
+    text-align: right;
+}
+
+.gp-cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    font-family: inherit;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.gp-cancel-btn:hover {
+    border-color: #c0392b;
+    color: #c0392b;
+    background: rgba(192, 57, 43, 0.06);
+}
+
+.gp-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-hover);
+    overflow: hidden;
+}
+
+.gp-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), #4A6D5C);
+    transition: width 0.5s ease;
+}
+
+.gp-error {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #c0392b;
+    padding: 0.4rem 0.6rem;
+    background: rgba(192, 57, 43, 0.06);
+    border-radius: var(--radius-sm);
+}
+
+/* 取消状态按钮 */
+.btn.btn-cancel {
+    background: transparent;
+    border: 1px solid #c0392b;
+    color: #c0392b;
+    box-shadow: none;
+}
+
+.btn.btn-cancel:hover {
+    background: rgba(192, 57, 43, 0.08);
+}
+
 /* ===== 卡片 ===== */
 .card {
     background: var(--bg-card);
@@ -884,4 +1058,168 @@ textarea {
 .btn-voice-preview:hover {
     background: var(--accent-glow);
     border-color: var(--accent);
+}
+
+/* ===== 历史记录操作 ===== */
+.history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.history-header .card-title {
+    margin-bottom: 0;
+}
+
+.history-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.history-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+}
+
+.history-item .item-checkbox {
+    flex-shrink: 0;
+}
+
+.history-item .history-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.history-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.history-title {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.history-time {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.history-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-delete-item {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+}
+
+.btn-delete-item:hover {
+    color: #c0392b;
+    background: rgba(192, 57, 43, 0.08);
+}
+
+/* 小号 + 危险按钮 */
+.btn-sm {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+}
+
+.btn-danger {
+    background: #c0392b;
+    color: #fff;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #a93226;
+}
+
+/* ===== 确认弹窗 ===== */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease;
+}
+
+.confirm-box {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 1.5rem 2rem;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-box h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+    color: #c0392b;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.confirm-box p {
+    margin: 0 0 1.25rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
 }

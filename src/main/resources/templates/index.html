@@ -33,124 +33,173 @@
     </header>
 
     <main class="container">
-        <!-- 步骤指示器 -->
-        <div class="steps">
-            <div class="step active" data-step="1">
-                <span class="step-num">1</span>
-                <span class="step-label">上传章节</span>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="2">
-                <span class="step-num">2</span>
-                <span class="step-label">确认朗读稿</span>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="3">
-                <span class="step-num">3</span>
-                <span class="step-label">生成音频</span>
-            </div>
+        <!-- 导航栏选项卡 -->
+        <div class="nav-tabs">
+            <button class="tab-item active" data-tab="upload" onclick="switchTab('upload')">
+                <i data-lucide="file-text" class="icon-inline"></i> <span class="tab-label">原文</span>
+            </button>
+            <button class="tab-item" data-tab="script" onclick="switchTab('script')">
+                <i data-lucide="message-square" class="icon-inline"></i> <span class="tab-label">对话</span>
+            </button>
+            <button class="tab-item" data-tab="audio" onclick="switchTab('audio')">
+                <i data-lucide="headphones" class="icon-inline"></i> <span class="tab-label">音频</span>
+            </button>
+            <button class="tab-item" data-tab="history" onclick="switchTab('history')">
+                <i data-lucide="history" class="icon-inline"></i> <span class="tab-label">历史记录</span>
+            </button>
         </div>
 
-        <!-- 第一步：上传章节 -->
-        <section id="section-upload" class="card">
-            <h2 class="card-title"><i data-lucide="file-edit" class="icon-inline"></i> 上传章节文本</h2>
-            <div class="form-group">
-                <label for="chapter-title">章节标题</label>
-                <input type="text" id="chapter-title" placeholder="例如：第一章 初入江湖" maxlength="128">
-            </div>
-            <div class="form-group">
-                <label for="chapter-content">章节正文</label>
-                <textarea id="chapter-content" rows="12" placeholder="在此粘贴小说章节文本..."></textarea>
-                <div class="char-count"><span id="word-count">0</span> 字</div>
-            </div>
-            <button id="btn-upload" class="btn btn-primary" onclick="uploadChapter()">
-                <i data-lucide="rocket" class="icon-inline"></i> 上传并分析
-            </button>
-        </section>
-
-        <!-- 状态面板 -->
-        <section id="section-status" class="card" style="display:none;">
-            <h2 class="card-title"><i data-lucide="hourglass" class="icon-inline"></i> 任务状态</h2>
-            <div class="status-panel">
-                <div class="status-row">
-                    <span class="status-label">状态</span>
-                    <span id="task-status" class="status-badge">等待中</span>
+        <!-- 全局 AI 进度条 -->
+        <div id="global-progress" class="global-progress" style="display:none;">
+            <div class="gp-row">
+                <div class="gp-info">
+                    <span class="gp-dot"></span>
+                    <span id="gp-label">AI 处理中...</span>
                 </div>
-                <div class="progress-bar-container">
-                    <div id="progress-bar" class="progress-bar" style="width:0%"></div>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">进度</span>
-                    <span id="task-progress">0%</span>
-                </div>
-                <div id="error-msg" class="error-msg" style="display:none;"></div>
-            </div>
-        </section>
-
-        <!-- 第二步：朗读稿预览 -->
-        <section id="section-script" class="card" style="display:none;">
-            <h2 class="card-title"><i data-lucide="book-open" class="icon-inline"></i> 朗读稿预览</h2>
-            <div id="characters-list" class="characters-list"></div>
-
-            <!-- 朗读稿操作栏 -->
-            <div class="script-actions">
-                <button id="btn-edit-mode" class="btn btn-secondary" onclick="toggleEditMode()">
-                    <i data-lucide="edit-3" class="icon-inline"></i> 编辑朗读稿
-                </button>
-                <button id="btn-save-script" class="btn btn-primary" style="display:none;" onclick="saveScript()">
-                    <i data-lucide="check" class="icon-inline"></i> 保存修改
-                </button>
-                <button id="btn-cancel-edit" class="btn btn-outline" style="display:none;" onclick="cancelEdit()">
-                    <i data-lucide="x" class="icon-inline"></i> 取消
-                </button>
-                <button id="btn-ai-regen" class="btn btn-outline" onclick="showRegenDialog()">
-                    <i data-lucide="bot" class="icon-inline"></i> AI 重新生成
-                </button>
-            </div>
-
-            <!-- AI 重新生成对话框 -->
-            <div id="regen-dialog" class="regen-dialog" style="display:none;">
-                <label class="regen-label">请描述你的修改意见：</label>
-                <textarea id="regen-instruction" rows="3" placeholder="例如：把第3段旁白改为李逍遥的内心独白；或者：重新分析所有角色的情感"></textarea>
-                <div class="regen-actions">
-                    <button id="btn-regen-submit" class="btn btn-primary" onclick="regenerateScript()">
-                        <i data-lucide="rocket" class="icon-inline"></i> 提交给 AI
+                <div class="gp-right">
+                    <span id="gp-percent">0%</span>
+                    <button id="gp-cancel" class="gp-cancel-btn" onclick="cancelTask()">
+                        <i data-lucide="x" class="icon-inline"></i> 取消
                     </button>
-                    <button class="btn btn-outline" onclick="hideRegenDialog()">取消</button>
                 </div>
             </div>
+            <div class="gp-track">
+                <div id="gp-bar" class="gp-fill"></div>
+            </div>
+            <div id="gp-error" class="gp-error" style="display:none;"></div>
+        </div>
 
-            <div id="segments-list" class="segments-list"></div>
-            <div class="action-row">
-                <button id="btn-synthesize" class="btn btn-primary" onclick="startSynthesis()">
-                    <i data-lucide="music" class="icon-inline"></i> 开始语音合成
+        <!-- 原文视图 -->
+        <div id="view-upload" class="tab-pane active">
+            <!-- 上传章节 -->
+            <section id="section-upload" class="card">
+                <h2 class="card-title"><i data-lucide="file-edit" class="icon-inline"></i> 上传章节文本</h2>
+                <div class="form-group">
+                    <label for="chapter-title">章节标题</label>
+                    <input type="text" id="chapter-title" placeholder="例如：第一章 初入江湖" maxlength="128">
+                </div>
+                <div class="form-group">
+                    <label for="chapter-content">章节正文</label>
+                    <textarea id="chapter-content" rows="12" placeholder="在此粘贴小说章节文本..."></textarea>
+                    <div class="char-count"><span id="word-count">0</span> 字</div>
+                </div>
+                <button id="btn-upload" class="btn btn-primary" onclick="handleUploadClick()">
+                    <i data-lucide="rocket" class="icon-inline"></i> 上传并分析
                 </button>
-            </div>
-        </section>
+            </section>
+        </div>
 
-        <!-- 第三步：音频结果 -->
-        <section id="section-audio" class="card" style="display:none;">
-            <h2 class="card-title"><i data-lucide="headphones" class="icon-inline"></i> 音频结果</h2>
-            <div class="audio-player-container">
-                <audio id="audio-player" controls class="audio-player"></audio>
-            </div>
-            <div class="action-row">
-                <button id="btn-download" class="btn btn-secondary" onclick="downloadAudio()">
-                    <i data-lucide="download" class="icon-inline"></i> 下载音频
-                </button>
-                <button class="btn btn-outline" onclick="resetAll()">
-                    <i data-lucide="rotate-ccw" class="icon-inline"></i> 重新开始
-                </button>
-            </div>
-        </section>
+        <!-- 对话视图：朗读稿预览 -->
+        <div id="view-script" class="tab-pane">
+            <section id="section-script" class="card">
+                <h2 class="card-title"><i data-lucide="book-open" class="icon-inline"></i> 朗读稿预览</h2>
 
-        <!-- 任务历史 -->
-        <section id="section-history" class="card">
-            <h2 class="card-title"><i data-lucide="history" class="icon-inline"></i> 任务历史</h2>
-            <div id="task-history" class="task-history">
-                <p class="empty-hint">暂无历史任务</p>
+                <div id="script-empty-hint" class="empty-hint">暂无对话稿内容，请先在“原文”页面上传章节并等待分析完毕。</div>
+                <div id="script-content-area" style="display: none;">
+                    <div id="characters-list" class="characters-list"></div>
+
+                    <!-- 朗读稿操作栏 -->
+                    <div class="script-actions">
+                        <button id="btn-edit-mode" class="btn btn-secondary" onclick="toggleEditMode()">
+                            <i data-lucide="edit-3" class="icon-inline"></i> 编辑朗读稿
+                        </button>
+                        <button id="btn-save-script" class="btn btn-primary" style="display:none;"
+                            onclick="saveScript()">
+                            <i data-lucide="check" class="icon-inline"></i> 保存修改
+                        </button>
+                        <button id="btn-cancel-edit" class="btn btn-outline" style="display:none;"
+                            onclick="cancelEdit()">
+                            <i data-lucide="x" class="icon-inline"></i> 取消
+                        </button>
+                        <button id="btn-ai-regen" class="btn btn-outline" onclick="showRegenDialog()">
+                            <i data-lucide="bot" class="icon-inline"></i> AI 重新生成
+                        </button>
+                    </div>
+
+                    <!-- AI 重新生成对话框 -->
+                    <div id="regen-dialog" class="regen-dialog" style="display:none;">
+                        <label class="regen-label">请描述你的修改意见：</label>
+                        <textarea id="regen-instruction" rows="3"
+                            placeholder="例如：把第3段旁白改为李逍遥的内心独白；或者：重新分析所有角色的情感"></textarea>
+                        <div class="regen-actions">
+                            <button id="btn-regen-submit" class="btn btn-primary" onclick="regenerateScript()">
+                                <i data-lucide="rocket" class="icon-inline"></i> 提交给 AI
+                            </button>
+                            <button class="btn btn-outline" onclick="hideRegenDialog()">取消</button>
+                        </div>
+                    </div>
+
+                    <div id="segments-list" class="segments-list"></div>
+                    <div class="action-row">
+                        <button id="btn-synthesize" class="btn btn-primary" onclick="handleSynthesisClick()">
+                            <i data-lucide="music" class="icon-inline"></i> 开始语音合成
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 音频视图：生成结果 -->
+        <div id="view-audio" class="tab-pane">
+            <section id="section-audio" class="card">
+                <h2 class="card-title"><i data-lucide="headphones" class="icon-inline"></i> 音频结果</h2>
+                <div id="audio-empty-hint" class="empty-hint">暂无生成的音频，请先在“对话”页面点击合成。</div>
+
+                <div id="audio-content-area" style="display: none;">
+                    <div class="audio-player-container">
+                        <audio id="audio-player" controls class="audio-player"></audio>
+                    </div>
+                    <div class="action-row">
+                        <button id="btn-download" class="btn btn-secondary" onclick="downloadAudio()">
+                            <i data-lucide="download" class="icon-inline"></i> 下载音频
+                        </button>
+                        <button class="btn btn-outline" onclick="resetAll()">
+                            <i data-lucide="rotate-ccw" class="icon-inline"></i> 重新开始
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 历史记录视图 -->
+        <div id="view-history" class="tab-pane">
+            <section id="section-history" class="card">
+                <div class="history-header">
+                    <h2 class="card-title"><i data-lucide="history" class="icon-inline"></i> 任务历史</h2>
+                    <!-- 默认入口按钮 -->
+                    <button id="btn-batch-mode" class="btn btn-sm btn-outline" style="display:none;"
+                        onclick="enterBatchMode()">
+                        <i data-lucide="check-square" class="icon-inline"></i> 批量管理
+                    </button>
+                    <!-- 批量操作栏（进入批量模式后显示） -->
+                    <div id="batch-actions" class="history-actions" style="display:none;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="history-select-all" onchange="toggleSelectAll(this)">
+                            <span>全选</span>
+                        </label>
+                        <button class="btn btn-sm btn-danger" onclick="confirmBatchDelete()">
+                            <i data-lucide="trash-2" class="icon-inline"></i> 删除选中 (<span id="selected-count">0</span>)
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="exitBatchMode()">取消</button>
+                    </div>
+                </div>
+                <div id="task-history" class="task-history">
+                    <p class="empty-hint">暂无历史任务</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- 删除确认弹窗 -->
+        <div id="confirm-dialog" class="confirm-overlay" style="display:none;">
+            <div class="confirm-box">
+                <h3><i data-lucide="alert-triangle" class="icon-inline"></i> 确认删除</h3>
+                <p id="confirm-msg">确定要删除选中的任务吗？此操作不可恢复。</p>
+                <div class="confirm-actions">
+                    <button class="btn btn-outline" onclick="hideConfirmDialog()">取消</button>
+                    <button class="btn btn-danger" id="confirm-delete-btn" onclick="executeDelete()">确认删除</button>
+                </div>
             </div>
-        </section>
+        </div>
     </main>
 
     <footer class="footer">

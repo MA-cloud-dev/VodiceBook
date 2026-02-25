@@ -145,4 +145,28 @@ public class TaskController {
         taskService.startAnalysis(task.getId());
         return ResponseEntity.ok(task);
     }
+
+    /**
+     * 删除单个任务
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        taskService.deleteTask(id, userId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 批量删除任务
+     */
+    @DeleteMapping("/batch")
+    public ResponseEntity<Void> deleteBatch(@RequestBody Map<String, List<Long>> body) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        List<Long> ids = body.get("ids");
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        taskService.deleteTaskBatch(ids, userId);
+        return ResponseEntity.ok().build();
+    }
 }

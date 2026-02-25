@@ -171,6 +171,16 @@ async function loadVoices() {
 }
 
 // ===== 上传章节 =====
+let isUploading = false;
+
+function handleUploadClick() {
+    if (isUploading) {
+        cancelTask();
+        return;
+    }
+    uploadChapter();
+}
+
 async function uploadChapter() {
     const title = document.getElementById('chapter-title').value.trim();
     const content = document.getElementById('chapter-content').value.trim();
@@ -204,13 +214,17 @@ async function uploadChapter() {
         const task = await taskRes.json();
         currentTaskId = task.id;
 
-        setStep(2);
-        showSection('status');
+        isUploading = true;
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="x" class="icon-inline"></i> 取消分析';
+        btn.classList.add('btn-cancel');
+        refreshIcons();
+
+        showGlobalProgress('AI 正在分析章节...');
         startPolling();
         saveUserState();
     } catch (err) {
         showToast('操作失败: ' + err.message);
-    } finally {
         btn.disabled = false;
         btn.innerHTML = '<i data-lucide="rocket" class="icon-inline"></i> 上传并分析';
         refreshIcons();
@@ -238,43 +252,32 @@ async function pollStatus() {
         if (res.status === 401) return logout();
         if (!res.ok) return;
         const task = await res.json();
-        updateStatusPanel(task);
+
+        const label = statusLabels[task.status] || task.status;
+        updateGlobalProgress(task.progress, label);
 
         if (task.status === 'SCRIPT_READY') {
             stopPolling();
+            hideGlobalProgress();
+            resetUploadBtn();
             await loadScript();
         } else if (task.status === 'COMPLETED') {
             stopPolling();
+            hideGlobalProgress();
+            resetSynthesisBtn();
             showAudioSection();
         } else if (task.status === 'FAILED') {
             stopPolling();
+            showGlobalError(task.errorMessage || '任务执行失败');
+            resetUploadBtn();
+            resetSynthesisBtn();
         }
     } catch (err) {
         console.error('轮询失败:', err);
     }
 }
 
-function updateStatusPanel(task) {
-    const statusEl = document.getElementById('task-status');
-    const progressEl = document.getElementById('task-progress');
-    const progressBar = document.getElementById('progress-bar');
-    const errorEl = document.getElementById('error-msg');
-
-    const statusClass = task.status.toLowerCase().replace('_', '-');
-    statusEl.textContent = statusLabels[task.status] || task.status;
-    statusEl.className = 'status-badge ' + statusClass;
-
-    progressEl.textContent = task.progress + '%';
-    progressBar.style.width = task.progress + '%';
-
-    if (task.status === 'FAILED' && task.errorMessage) {
-        errorEl.textContent = task.errorMessage;
-        errorEl.style.display = 'block';
-    } else {
-        errorEl.style.display = 'none';
-    }
-    document.getElementById('section-status').style.display = 'block';
-}
+// updateStatusPanel 已由 updateGlobalProgress 取代
 
 // ===== 朗读稿展示 =====
 async function loadScript() {
@@ -286,9 +289,12 @@ async function loadScript() {
 
         currentScript = script;
         isEditMode = false;
+
+        document.getElementById('script-empty-hint').style.display = 'none';
+        document.getElementById('script-content-area').style.display = 'block';
+        switchTab('script');
+
         renderScript(script);
-        showSection('script');
-        setStep(2);
         updateEditButtons(false);
     } catch (err) {
         showToast('加载朗读稿失败: ' + err.message);
@@ -656,10 +662,20 @@ async function regenerateScript() {
 }
 
 // ===== TTS 合成 =====
+let isSynthesizing = false;
+
+function handleSynthesisClick() {
+    if (isSynthesizing) {
+        cancelTask();
+        return;
+    }
+    startSynthesis();
+}
+
 async function startSynthesis() {
     const btn = document.getElementById('btn-synthesize');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> 合成中...';
+    btn.innerHTML = '<span class="spinner"></span> 启动中...';
 
     try {
         const res = await fetch(`/api/tasks/${currentTaskId}/synthesize`, {
@@ -668,7 +684,14 @@ async function startSynthesis() {
         });
         if (res.status === 401) return logout();
         if (!res.ok) throw new Error('启动合成失败');
-        setStep(3);
+
+        isSynthesizing = true;
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="x" class="icon-inline"></i> 取消合成';
+        btn.classList.add('btn-cancel');
+        refreshIcons();
+
+        showGlobalProgress('语音合成中...');
         startPolling();
     } catch (err) {
         showToast('启动合成失败: ' + err.message);
@@ -683,8 +706,10 @@ function showAudioSection() {
     const player = document.getElementById('audio-player');
     const token = getToken();
     player.src = `/api/tasks/${currentTaskId}/audio?token=${encodeURIComponent(token)}`;
-    showSection('audio');
-    setStep(3);
+
+    document.getElementById('audio-empty-hint').style.display = 'none';
+    document.getElementById('audio-content-area').style.display = 'block';
+    switchTab('audio');
 
     const btn = document.getElementById('btn-synthesize');
     if (btn) {
@@ -706,27 +731,39 @@ function resetAll() {
     currentChapterId = null;
     currentScript = null;
     isEditMode = false;
+    isUploading = false;
+    isSynthesizing = false;
     stopPolling();
+    hideGlobalProgress();
 
     document.getElementById('chapter-title').value = '';
     document.getElementById('chapter-content').value = '';
     document.getElementById('word-count').textContent = '0';
 
-    document.getElementById('section-status').style.display = 'none';
-    document.getElementById('section-script').style.display = 'none';
-    document.getElementById('section-audio').style.display = 'none';
-    document.getElementById('section-upload').style.display = 'block';
+    const scriptHint = document.getElementById('script-empty-hint');
+    if (scriptHint) scriptHint.style.display = 'block';
+    const scriptArea = document.getElementById('script-content-area');
+    if (scriptArea) scriptArea.style.display = 'none';
+
+    const audioHint = document.getElementById('audio-empty-hint');
+    if (audioHint) audioHint.style.display = 'block';
+    const audioArea = document.getElementById('audio-content-area');
+    if (audioArea) audioArea.style.display = 'none';
 
     // Enable inputs
     document.getElementById('chapter-title').readOnly = false;
     document.getElementById('chapter-content').readOnly = false;
+    resetUploadBtn();
     document.getElementById('btn-upload').style.display = 'inline-block';
 
-    setStep(1);
+    switchTab('upload');
     loadHistory();
 }
 
 // ===== 任务历史 =====
+let pendingDeleteIds = [];
+let batchMode = false;
+
 async function loadHistory() {
     try {
         const res = await fetch('/api/tasks', { headers: authHeaders() });
@@ -735,28 +772,164 @@ async function loadHistory() {
         const tasks = await res.json();
 
         const historyEl = document.getElementById('task-history');
+        const batchBtn = document.getElementById('btn-batch-mode');
+        const batchActions = document.getElementById('batch-actions');
+
         if (tasks.length === 0) {
             historyEl.innerHTML = '<p class="empty-hint">暂无历史任务</p>';
+            if (batchBtn) batchBtn.style.display = 'none';
+            if (batchActions) batchActions.style.display = 'none';
             return;
         }
 
+        // 获取章节标题映射
+        const chapterTitles = {};
+        try {
+            const chapRes = await fetch('/api/chapters', { headers: authHeaders() });
+            if (chapRes.ok) {
+                const chapters = await chapRes.json();
+                chapters.forEach(c => { chapterTitles[c.id] = c.title; });
+            }
+        } catch (e) { /* 降级 */ }
+
+        // 默认只显示"批量管理"按钮
+        if (batchBtn) batchBtn.style.display = batchMode ? 'none' : 'inline-flex';
+        if (batchActions) batchActions.style.display = batchMode ? 'flex' : 'none';
+
         historyEl.innerHTML = '';
+
         for (const task of tasks) {
             const statusClass = task.status.toLowerCase().replace('_', '-');
+            const title = chapterTitles[task.chapterId] || `章节 #${task.chapterId}`;
             const item = document.createElement('div');
             item.className = 'history-item';
-            item.onclick = () => loadTaskDetails(task.id);
+            item.dataset.taskId = task.id;
             item.innerHTML = `
-                <div class="history-info">
-                    <span class="history-title">任务 #${task.id} — 章节 #${task.chapterId}</span>
-                    <span class="history-time">${formatTime(task.createdAt)}</span>
+                <input type="checkbox" class="item-checkbox" data-id="${task.id}"
+                       style="display:${batchMode ? 'inline-block' : 'none'};"
+                       onclick="event.stopPropagation(); updateSelectedCount();">
+                <div class="history-body" onclick="loadTaskDetails(${task.id})">
+                    <div class="history-info">
+                        <span class="history-title">${escapeHtml(title)}</span>
+                        <span class="history-time">${formatTime(task.createdAt)}</span>
+                    </div>
+                    <div class="history-right">
+                        <span class="status-badge ${statusClass}">${statusLabels[task.status] || task.status}</span>
+                        <button class="btn-delete-item" onclick="event.stopPropagation(); confirmSingleDelete(${task.id}, '${escapeHtml(title)}');" title="删除">
+                            <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                        </button>
+                    </div>
                 </div>
-                <span class="status-badge ${statusClass}">${statusLabels[task.status] || task.status}</span>
             `;
             historyEl.appendChild(item);
         }
+        updateSelectedCount();
+        refreshIcons();
     } catch (err) {
         console.error('加载历史失败:', err);
+    }
+}
+
+function enterBatchMode() {
+    batchMode = true;
+    document.getElementById('btn-batch-mode').style.display = 'none';
+    document.getElementById('batch-actions').style.display = 'flex';
+    document.querySelectorAll('.item-checkbox').forEach(cb => {
+        cb.style.display = 'inline-block';
+        cb.checked = false;
+    });
+    document.getElementById('history-select-all').checked = false;
+    updateSelectedCount();
+    refreshIcons();
+}
+
+function exitBatchMode() {
+    batchMode = false;
+    document.getElementById('btn-batch-mode').style.display = 'inline-flex';
+    document.getElementById('batch-actions').style.display = 'none';
+    document.querySelectorAll('.item-checkbox').forEach(cb => {
+        cb.style.display = 'none';
+        cb.checked = false;
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    const countEl = document.getElementById('selected-count');
+    if (countEl) countEl.textContent = checkboxes.length;
+}
+
+function toggleSelectAll(masterCheckbox) {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => { cb.checked = masterCheckbox.checked; });
+    updateSelectedCount();
+}
+
+function getSelectedTaskIds() {
+    const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+    return Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+}
+
+function confirmSingleDelete(taskId, title) {
+    pendingDeleteIds = [taskId];
+    document.getElementById('confirm-msg').textContent = `确定要删除「${title}」吗？此操作不可恢复。`;
+    document.getElementById('confirm-dialog').style.display = 'flex';
+    refreshIcons();
+}
+
+function confirmBatchDelete() {
+    const ids = getSelectedTaskIds();
+    if (ids.length === 0) return showToast('请先选择要删除的任务');
+    pendingDeleteIds = ids;
+    document.getElementById('confirm-msg').textContent = `确定要删除选中的 ${ids.length} 个任务吗？此操作不可恢复。`;
+    document.getElementById('confirm-dialog').style.display = 'flex';
+    refreshIcons();
+}
+
+function hideConfirmDialog() {
+    document.getElementById('confirm-dialog').style.display = 'none';
+    pendingDeleteIds = [];
+}
+
+async function executeDelete() {
+    if (pendingDeleteIds.length === 0) return;
+    const btn = document.getElementById('confirm-delete-btn');
+    btn.disabled = true;
+    btn.textContent = '删除中...';
+
+    try {
+        if (pendingDeleteIds.length === 1) {
+            const res = await fetch(`/api/tasks/${pendingDeleteIds[0]}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.status === 401) return logout();
+            if (!res.ok) throw new Error('删除失败');
+        } else {
+            const res = await fetch('/api/tasks/batch', {
+                method: 'DELETE',
+                headers: authHeaders(),
+                body: JSON.stringify({ ids: pendingDeleteIds })
+            });
+            if (res.status === 401) return logout();
+            if (!res.ok) throw new Error('批量删除失败');
+        }
+
+        // 如果当前任务在被删除的列表中，重置状态
+        if (pendingDeleteIds.includes(currentTaskId)) {
+            resetAll();
+        }
+
+        hideConfirmDialog();
+        batchMode = false; // 删除后退出批量模式
+        showToast(`已删除 ${pendingDeleteIds.length} 个任务`);
+        loadHistory();
+    } catch (err) {
+        showToast('删除失败: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '确认删除';
     }
 }
 
@@ -791,50 +964,57 @@ async function loadTaskDetails(taskId) {
         document.getElementById('btn-upload').style.display = 'none';
 
         if (task.status === 'PENDING' || task.status === 'ANALYZING') {
-            setStep(1);
-            showSection('status');
-            document.getElementById('section-script').style.display = 'none';
-            document.getElementById('section-audio').style.display = 'none';
+            switchTab('upload');
+            showGlobalProgress('AI 正在分析章节...');
+            isUploading = true;
+            const uploadBtn = document.getElementById('btn-upload');
+            uploadBtn.innerHTML = '<i data-lucide="x" class="icon-inline"></i> 取消分析';
+            uploadBtn.classList.add('btn-cancel');
+            uploadBtn.style.display = 'inline-block';
+            refreshIcons();
             startPolling();
         } else if (task.status === 'SCRIPT_READY') {
-            setStep(2);
-            showSection('status');
-            document.getElementById('section-audio').style.display = 'none';
-            startPolling(); // it will fetch script and transition
+            await loadScript();
         } else if (task.status === 'SYNTHESIZING') {
-            setStep(3);
-            showSection('status');
-            startPolling(); // wait for TTS
+            switchTab('script');
+            showGlobalProgress('语音合成中...');
+            isSynthesizing = true;
+            const synBtn = document.getElementById('btn-synthesize');
+            if (synBtn) {
+                synBtn.innerHTML = '<i data-lucide="x" class="icon-inline"></i> 取消合成';
+                synBtn.classList.add('btn-cancel');
+                refreshIcons();
+            }
+            startPolling();
         } else if (task.status === 'COMPLETED') {
-            document.getElementById('section-status').style.display = 'none';
-            // 手动渲染一次script
             loadScript().then(() => {
-                showAudioSection(); // section-upload, section-script, section-audio 全展示
+                showAudioSection();
             });
         } else if (task.status === 'FAILED') {
-            setStep(1);
-            showSection('status');
-            document.getElementById('task-status-text').textContent = '任务执行失败: ' + (task.errorMessage || '');
+            switchTab('upload');
+            showGlobalError(task.errorMessage || '任务执行失败');
         }
     } catch (err) {
         showToast(err.message);
     }
 }
 
-// ===== 工具函数 =====
-function showSection(name) {
-    if (name === 'script') document.getElementById('section-script').style.display = 'block';
-    if (name === 'audio') document.getElementById('section-audio').style.display = 'block';
-    if (name === 'status') document.getElementById('section-status').style.display = 'block';
-}
-
-function setStep(num) {
-    document.querySelectorAll('.step').forEach(el => {
-        const s = parseInt(el.dataset.step);
-        el.classList.remove('active', 'done');
-        if (s < num) el.classList.add('done');
-        if (s === num) el.classList.add('active');
+// ===== 通用辅助 =====
+function switchTab(tabId) {
+    // 切换导航栏激活状态
+    document.querySelectorAll('.tab-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.tab === tabId);
     });
+
+    // 切换视图显示
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+    });
+
+    const activePane = document.getElementById(`view-${tabId}`);
+    if (activePane) {
+        activePane.classList.add('active');
+    }
 }
 
 function escapeHtml(text) {
@@ -856,5 +1036,67 @@ function showToast(msg) {
 function refreshIcons() {
     if (window.lucide) {
         lucide.createIcons();
+    }
+}
+
+// ===== 全局进度条控制 =====
+function showGlobalProgress(label) {
+    const el = document.getElementById('global-progress');
+    el.style.display = 'block';
+    document.getElementById('gp-label').textContent = label || 'AI 处理中...';
+    document.getElementById('gp-percent').textContent = '0%';
+    document.getElementById('gp-bar').style.width = '0%';
+    document.getElementById('gp-error').style.display = 'none';
+    refreshIcons();
+}
+
+function updateGlobalProgress(percent, label) {
+    const el = document.getElementById('global-progress');
+    if (el.style.display === 'none') el.style.display = 'block';
+    if (label) document.getElementById('gp-label').textContent = label;
+    document.getElementById('gp-percent').textContent = percent + '%';
+    document.getElementById('gp-bar').style.width = percent + '%';
+}
+
+function hideGlobalProgress() {
+    document.getElementById('global-progress').style.display = 'none';
+}
+
+function showGlobalError(msg) {
+    const errorEl = document.getElementById('gp-error');
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+    // 停止脉动动画但保留进度条可见
+    const dot = document.querySelector('.gp-dot');
+    if (dot) dot.style.animation = 'none';
+}
+
+function cancelTask() {
+    stopPolling();
+    hideGlobalProgress();
+    resetUploadBtn();
+    resetSynthesisBtn();
+    showToast('已取消当前任务');
+}
+
+function resetUploadBtn() {
+    isUploading = false;
+    const btn = document.getElementById('btn-upload');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="rocket" class="icon-inline"></i> 上传并分析';
+        btn.classList.remove('btn-cancel');
+        refreshIcons();
+    }
+}
+
+function resetSynthesisBtn() {
+    isSynthesizing = false;
+    const btn = document.getElementById('btn-synthesize');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="music" class="icon-inline"></i> 开始语音合成';
+        btn.classList.remove('btn-cancel');
+        refreshIcons();
     }
 }

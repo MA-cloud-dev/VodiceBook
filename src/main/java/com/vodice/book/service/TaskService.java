@@ -239,6 +239,47 @@ public class TaskService {
         return saved;
     }
 
+    /**
+     * 删除单个任务
+     */
+    public void deleteTask(Long taskId, Long userId) {
+        Task task = getById(taskId, userId);
+        cleanupTask(task);
+        taskRepository.delete(task);
+    }
+
+    /**
+     * 批量删除任务
+     */
+    public void deleteTaskBatch(List<Long> taskIds, Long userId) {
+        for (Long id : taskIds) {
+            try {
+                deleteTask(id, userId);
+            } catch (Exception e) {
+                log.warn("删除任务 {} 失败: {}", id, e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 清理任务关联资源（音频文件、Redis缓存）
+     */
+    private void cleanupTask(Task task) {
+        // 清理音频文件
+        if (task.getAudioFilePath() != null) {
+            java.io.File audioFile = new java.io.File(task.getAudioFilePath());
+            if (audioFile.exists()) {
+                audioFile.delete();
+            }
+        }
+        // 清理 Redis 缓存
+        try {
+            redisTemplate.delete(TASK_STATUS_KEY + task.getId());
+        } catch (Exception e) {
+            log.warn("清理 Redis 缓存失败: {}", e.getMessage());
+        }
+    }
+
     // ===== Redis 缓存辅助 =====
 
     private void cacheTaskStatus(Task task) {
